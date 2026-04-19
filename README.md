@@ -1,97 +1,227 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 💊 MediKit — React Native App
 
-# Getting Started
+A mobile app for tracking medicine kits, expiration dates, stock levels, and sharing with family.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+## 📁 Project Structure
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+```
+MediKit/
+├── App.tsx                          # Root entry point
+├── package.json
+├── tsconfig.json
+├── babel.config.js
+└── src/
+    ├── types/
+    │   └── index.ts                 # All TypeScript interfaces & navigation types
+    ├── theme/
+    │   └── index.ts                 # Colors, Typography, Spacing, Radius, Shadow tokens
+    ├── assets/
+    │   └── data/
+    │       └── mockData.ts          # Mock kits, medicines, notifications, user
+    ├── store/
+    │   └── index.ts                 # Zustand global store (kits, medicines, notifications)
+    ├── hooks/
+    │   └── index.ts                 # useMedicineStatus, useExpiryLabel, useKitMedicines, etc.
+    ├── components/
+    │   └── index.tsx                # Shared UI: StatusBadge, MedicineIcon, KitThumb, Card, etc.
+    ├── navigation/
+    │   └── AppNavigator.tsx         # Root stack + bottom tabs + kit stack + profile stack
+    └── screens/
+        ├── KitListScreen.tsx        # Home — all medicine kits
+        ├── KitDetailScreen.tsx      # Medicine list inside a kit (filters, search, FAB)
+        ├── MedicineDetailScreen.tsx # Full medicine info, warnings, actions
+        ├── AddMedicineScreen.tsx    # Add medicine (scan / search / manual)
+        ├── NotificationsScreen.tsx  # All alerts with mark-read and dismiss
+        ├── ExpiryScreen.tsx         # All medicines sorted by expiry with progress bars
+        └── index.tsx                # ShareKitScreen, ProfileScreen, SettingsScreen + stubs
+```
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+---
 
-```sh
-# Using npm
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- React Native CLI (not Expo)
+- Xcode 15+ (for iOS)
+- Android Studio + Android SDK 34 (for Android)
+- CocoaPods (for iOS)
+
+### 1. Clone & Install
+
+```bash
+git clone <your-repo>
+cd MediKit
+npm install
+```
+
+### 2. iOS Setup
+
+```bash
+cd ios && pod install && cd ..
+npx react-native run-ios
+```
+
+### 3. Android Setup
+
+```bash
+npx react-native run-android
+```
+
+### 4. Start Metro
+
+```bash
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
-## Step 2: Build and run your app
+---
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## 🎨 Design System
 
-### Android
+All design tokens are in `src/theme/index.ts`. The palette matches the original design spec:
 
-```sh
-# Using npm
-npm run android
+| Token | Value | Usage |
+|---|---|---|
+| `bgPage` | `#F7F8FD` | Screen backgrounds |
+| `bgCard` | `#FFFFFF` | Card surfaces |
+| `blue` | `#78A9FF` | Primary actions, active states |
+| `accent` | `#FF775C` | Accent buttons, low-stock badge |
+| `success` | `#56CE53` | OK status |
+| `warning` | `#FFCF47` | Expiring soon |
+| `danger` | `#FF7575` | Expired, critical alerts |
 
-# OR using Yarn
-yarn android
+---
+
+## 🗺️ Navigation Architecture
+
+```
+RootStack
+├── Onboarding (first launch only)
+└── Main (Bottom Tabs)
+    ├── KitsTab → KitsStack
+    │   ├── KitList
+    │   ├── KitDetail          ← medicine list with filters + search
+    │   ├── MedicineDetail     ← full info + actions
+    │   ├── AddMedicine        ← scan / search / manual
+    │   ├── ScanMedicine
+    │   ├── ManualEntry
+    │   ├── ShareKit           ← QR + Telegram + WhatsApp + access control
+    │   ├── ShareMedicine
+    │   ├── MedicineInteraction
+    │   ├── SyncMembers
+    │   ├── ActivityHistory
+    │   └── CreateEditKit
+    ├── NotificationsTab       ← all alerts with badge count
+    ├── AddTab                 ← quick access to add flow
+    ├── ExpiryTab              ← all medicines sorted by expiry date
+    └── ProfileTab → ProfileStack
+        ├── ProfileHome
+        ├── Settings           ← notifications, reminders, theme
+        ├── ReminderSettings
+        ├── Support
+        └── LinkedAccounts
 ```
 
-### iOS
+---
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## 🧱 State Management (Zustand)
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+The store in `src/store/index.ts` manages:
 
-```sh
-bundle install
-```
+- **Kits** — add, update, delete
+- **Medicines** — add, update, delete, decrement quantity
+- **Notifications** — mark read, dismiss, mark all read
+- **Settings** — theme, reminders, sharing defaults
 
-Then, and every time you update your native dependencies, run:
+Replace mock data with real API calls by swapping the initial state and adding async actions.
 
-```sh
-bundle exec pod install
-```
+---
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## 📦 Key Dependencies
 
-```sh
-# Using npm
-npm run ios
+| Package | Purpose |
+|---|---|
+| `@react-navigation/native` | Navigation container |
+| `@react-navigation/bottom-tabs` | Tab bar |
+| `@react-navigation/native-stack` | Stack navigation |
+| `zustand` | Global state management |
+| `react-native-reanimated` | Smooth animations |
+| `react-native-gesture-handler` | Swipe & gesture support |
+| `react-native-linear-gradient` | Gradient backgrounds on cards |
+| `react-native-camera` | Camera for scanning |
+| `react-native-share` | Native share sheet |
+| `react-native-qrcode-svg` | QR code generation |
+| `react-native-date-picker` | Expiry date picker |
+| `react-native-mmkv` | Fast local storage |
+| `date-fns` | Date formatting & diff |
+| `react-native-notifications` | Push notifications |
 
-# OR using Yarn
-yarn ios
-```
+---
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## 🔜 What to Build Next
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+### Priority 1 — Core flows
+- [ ] `ManualEntryScreen` — form with all medicine fields + date picker
+- [ ] `ScanMedicineScreen` — camera + barcode detection + OCR for expiry date
+- [ ] `CreateEditKitScreen` — icon picker, color tag, name, description
+- [ ] `MedicineInteraction` — detailed incompatibility screen
 
-## Step 3: Modify your app
+### Priority 2 — Sharing & Sync
+- [ ] `SyncMembersScreen` — invite, revoke, role management
+- [ ] `ActivityHistoryScreen` — timeline of changes
+- [ ] Real QR code generation with `react-native-qrcode-svg`
+- [ ] Deep link handling for kit invitations
 
-Now that you have successfully run the app, let's make changes!
+### Priority 3 — Infrastructure
+- [ ] Replace mock data with REST API / Firebase / Supabase
+- [ ] Push notification scheduling (`react-native-notifications`)
+- [ ] Onboarding flow with auth (Apple / Google / email)
+- [ ] Dark mode support (theme context + conditional Colors)
+- [ ] Offline-first sync with MMKV + conflict resolution
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+### Priority 4 — Polish
+- [ ] Animated transitions with `react-native-reanimated`
+- [ ] Haptic feedback on key actions
+- [ ] Empty state illustrations
+- [ ] App icon + splash screen
+- [ ] Accessibility (a11y) labels
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+---
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+## 🌍 Localisation
 
-## Congratulations! :tada:
+Currently Russian (`ru`). To add more languages, use `react-i18next` and extract all strings from screens into locale files.
 
-You've successfully run and modified your React Native App. :partying_face:
+---
 
-### Now what?
+## 📱 Screens Checklist (from spec)
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+| # | Screen | Status |
+|---|---|---|
+| 1 | Onboarding | 🔲 Stub |
+| 2 | Home / My Medicine Kits | ✅ Done |
+| 3 | Create / Edit Kit | 🔲 Stub |
+| 4 | Medicine List Inside a Kit | ✅ Done |
+| 5 | Add Medicine | ✅ Done |
+| 6 | Scan Medicine | 🔲 Stub |
+| 7 | Manual Medicine Entry | 🔲 Stub |
+| 8 | Medicine Details | ✅ Done |
+| 9 | Medicine Interaction / Warning | 🔲 Stub |
+| 10 | Share Medicine | 🔲 Stub |
+| 11 | Share Medicine Kit | ✅ Done |
+| 12 | Notifications | ✅ Done |
+| 13 | Expiration Management | ✅ Done |
+| 14 | Synced Members | 🔲 Stub |
+| 15 | Linked Accounts / Sync | 🔲 Stub |
+| 16 | Activity History | 🔲 Stub |
+| 17 | Search | 🔲 Stub |
+| 18 | Profile | ✅ Done |
+| 19 | Settings | ✅ Done |
+| 20 | Reminder Settings | 🔲 Stub |
+| 21 | Support / Help | 🔲 Stub |
+| 22 | Empty States | ✅ Done (inline) |
+| 23 | Permission Request Flows | 🔲 Pending |
+| 24 | Quick Actions / Bottom Sheet | 🔲 Pending |

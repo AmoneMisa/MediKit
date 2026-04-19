@@ -1,45 +1,44 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+// import React from 'react';
+// // import { StatusBar } from 'react-native';
+// import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// // import { AppNavigator } from './src/navigation/AppNavigator';
+// // import { Colors } from './src/theme';
+//
+// export default function App() {
+//   return (
+//     <GestureHandlerRootView style={{ flex: 1 }}>
+//       {/*<StatusBar*/}
+//       {/*  barStyle="dark-content"*/}
+//       {/*  backgroundColor={Colors.bgPage}*/}
+//       {/*  translucent={false}*/}
+//       {/*/>*/}
+//       {/*<AppNavigator />*/}
+//     </GestureHandlerRootView>
+//   );
+// }
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import React from 'react';
+import { Text, View, StyleSheet } from 'react-native';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
+const HelloWorldApp = () => {
+    return (
+        <View style={styles.container}>
+            <Text style={styles.text}>Hello, world!</Text>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    text: {
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
 });
 
-export default App;
+export default HelloWorldApp;

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, SafeAreaView,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, SafeAreaView, Image,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -111,7 +111,15 @@ function makeStyles(C: ColorPalette) {
     tag:     { backgroundColor: C.blueLight, borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: 4 },
     tagText: { fontSize: Typography.size.xs, color: C.blue, fontWeight: Typography.weight.semibold },
 
-    actionGrid:          { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs, marginBottom: Spacing.md },
+    heroPhoto: { width: 64, height: 64, borderRadius: Radius.md },
+
+    actionGrid:          { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs, marginBottom: Spacing.sm },
+    shareBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg,
+      backgroundColor: C.blueLight, marginBottom: Spacing.md,
+    },
+    shareBtnText: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: C.blue },
     interactionLink:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, paddingVertical: Spacing.md },
     interactionLinkText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.blue },
   });
@@ -172,7 +180,9 @@ export function MedicineDetailScreen() {
 
         {/* ── Hero ── */}
         <View style={s.hero}>
-          <MedicineIcon form={medicine.form} size={64} />
+          {medicine.photoUri
+            ? <Image source={{ uri: medicine.photoUri }} style={s.heroPhoto} resizeMode="cover" />
+            : <MedicineIcon form={medicine.form} size={64} />}
           <View style={{ flex: 1 }}>
             <Text style={s.heroName}>{medicine.name}</Text>
             <Text style={s.heroForm}>
@@ -326,6 +336,14 @@ export function MedicineDetailScreen() {
           }} />
           <ActionBtn label="Удалить" icon="delete"           danger onPress={handleDelete} />
         </View>
+        <TouchableOpacity
+          style={s.shareBtn}
+          onPress={() => navigation.navigate('ShareMedicine', { medicineId, kitId })}
+          activeOpacity={0.85}
+        >
+          <Icon name="share-variant" size={18} color={C.blue} />
+          <Text style={s.shareBtnText}>Поделиться препаратом</Text>
+        </TouchableOpacity>
 
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
           <TouchableOpacity

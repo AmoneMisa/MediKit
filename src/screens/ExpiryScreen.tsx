@@ -79,7 +79,7 @@ export function ExpiryScreen() {
         keyExtractor={m => m.id}
         contentContainerStyle={s.list}
         ListEmptyComponent={
-          <EmptyState kitten="doctor" title="Все препараты в порядке" subtitle="Ни один препарат не истёк" />
+          <EmptyState kitten="kit" title="Все препараты в порядке" subtitle="Ни один препарат не истёк" />
         }
         renderItem={({ item }) => (
           <ExpiryRow

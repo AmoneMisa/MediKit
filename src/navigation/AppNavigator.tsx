@@ -18,6 +18,8 @@ import { ThemeProvider, useIsDark, useColors } from '../context/ThemeContext';
 
 // ── Screen imports ─────────────────────────────────────────────────────────────
 import { KitListScreen }          from '../screens/KitListScreen';
+import { AllMedicinesScreen }     from '../screens/AllMedicinesScreen';
+import { ShareMedicineScreen }    from '../screens/ShareMedicineScreen';
 import { KitDetailScreen }        from '../screens/KitDetailScreen';
 import { MedicineDetailScreen }   from '../screens/MedicineDetailScreen';
 import { NotificationsScreen }    from '../screens/NotificationsScreen';
@@ -38,6 +40,7 @@ import { AddIntakeLogScreen }     from '../screens/AddIntakeLogScreen';
 import {
   ShareKitScreen, ProfileScreen, SettingsScreen,
 } from '../screens/screens';
+import { HelpScreen } from '../screens/HelpScreen';
 
 const RootStack    = createNativeStackNavigator<RootStackParamList>();
 const Tab          = createBottomTabNavigator<MainTabParamList>();
@@ -98,6 +101,7 @@ function KitsStackNavigator() {
   return (
     <KitsStack.Navigator screenOptions={so}>
       <KitsStack.Screen name="KitList"             component={KitListScreen}         options={{ title: 'Мои аптечки' }} />
+      <KitsStack.Screen name="AllMedicines"        component={AllMedicinesScreen}    options={{ title: 'Все препараты' }} />
       <KitsStack.Screen name="KitDetail"           component={KitDetailScreen}       options={{ title: '' }} />
       <KitsStack.Screen name="MedicineDetail"      component={MedicineDetailScreen}  options={{ title: '' }} />
       <KitsStack.Screen name="AddMedicine"         component={AddMedicineScreen}     options={{ title: 'Добавить препарат' }} />
@@ -109,6 +113,7 @@ function KitsStackNavigator() {
       <KitsStack.Screen name="SyncMembers"         component={SyncMembersScreen}     options={{ title: 'Участники' }} />
       <KitsStack.Screen name="ActivityHistory"     component={ActivityHistoryScreen} options={{ title: 'История' }} />
       <KitsStack.Screen name="CreateEditKit"       component={CreateEditKitScreen}   options={{ title: 'Аптечка' }} />
+      <KitsStack.Screen name="ShareMedicine"       component={ShareMedicineScreen}   options={{ title: 'Поделиться' }} />
     </KitsStack.Navigator>
   );
 }
@@ -180,6 +185,7 @@ function ProfileStackNavigator() {
     <ProfileStack.Navigator screenOptions={so}>
       <ProfileStack.Screen name="ProfileHome"    component={ProfileScreen}        options={{ title: 'Профиль' }} />
       <ProfileStack.Screen name="Settings"       component={SettingsScreen}       options={{ title: 'Настройки' }} />
+      <ProfileStack.Screen name="Support"        component={HelpScreen}           options={{ title: 'Как пользоваться' }} />
       <ProfileStack.Screen name="Persons"        component={PersonsScreen}        options={{ title: 'Контакты' }} />
       <ProfileStack.Screen name="Expiry"         component={ExpiryScreen}         options={{ title: 'Сроки годности' }} />
       <ProfileStack.Screen name="MedicineDetail" component={MedicineDetailScreen} options={{ title: '' }} />

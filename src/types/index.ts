@@ -224,8 +224,10 @@ export type NotificationsStackParamList = {
 
 export type KitsStackParamList = {
   KitList: undefined;
+  AllMedicines: undefined;
   KitDetail: { kitId: string };
   MedicineDetail: { medicineId: string; kitId: string };
+  ShareMedicine: { medicineId: string; kitId: string };
   AddMedicine: { kitId: string };
   ManualEntry: { kitId?: string; medicineId?: string; prefill?: MedicinePrefill };
   ScanMedicine: { kitId?: string };

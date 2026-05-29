@@ -888,7 +888,7 @@ export function ProfileScreen() {
           { emoji: '👥', label: 'Контакты', onPress: () => navigation.navigate('Persons') },
           { emoji: '📅', label: 'Сроки годности', onPress: () => navigation.navigate('Expiry') },
           { emoji: '⚙️', label: 'Настройки', onPress: () => navigation.navigate('Settings') },
-          { emoji: '❓', label: 'Помощь', onPress: () => {} },
+          { emoji: '❓', label: 'Помощь', onPress: () => navigation.navigate('Support') },
         ].map((item, i, arr) => (
           <View key={item.label}>
             <TouchableOpacity style={ps.row} onPress={item.onPress} activeOpacity={0.8}>

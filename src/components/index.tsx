@@ -5,12 +5,7 @@ import {
 import { Typography, Spacing, Radius, Shadow } from '../theme';
 import type { MedicineStatus, MedicineForm } from '../types';
 import { useColors } from '../context/ThemeContext';
-import {
-  KittenSleeping, KittenWaving, KittenWithPill, KittenDoctor,
-} from '../assets/kittens/KittenSVG';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
-export { KittenSleeping, KittenWaving, KittenWithPill, KittenDoctor };
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
 
@@ -106,15 +101,25 @@ export const IconButton: React.FC<{
 
 // ─── EmptyState ───────────────────────────────────────────────────────────────
 
-type KittenVariant = 'sleeping' | 'waving' | 'pill' | 'doctor';
+type KittenVariant = 'sleeping' | 'waving' | 'kit' | 'confused' | 'calendar' | 'shopping';
+
+const KITTEN_IMAGES: Record<KittenVariant, any> = {
+  sleeping: require('../assets/kittens/kitten_sleeping.png'),
+  waving:   require('../assets/kittens/kitten_waving.png'),
+  kit:      require('../assets/kittens/kitten_kit.png'),
+  confused: require('../assets/kittens/kitten_confused.png'),
+  calendar: require('../assets/kittens/kitten_calendar.png'),
+  shopping: require('../assets/kittens/kitten_shopping.png'),
+};
 
 function KittenFor({ variant, size }: { variant: KittenVariant; size: number }) {
-  switch (variant) {
-    case 'sleeping': return <KittenSleeping size={size} />;
-    case 'waving':   return <KittenWaving   size={size} />;
-    case 'pill':     return <KittenWithPill size={size} />;
-    case 'doctor':   return <KittenDoctor   size={size} />;
-  }
+  return (
+    <Image
+      source={KITTEN_IMAGES[variant]}
+      style={{ width: size, height: size }}
+      resizeMode="contain"
+    />
+  );
 }
 
 export const EmptyState: React.FC<{

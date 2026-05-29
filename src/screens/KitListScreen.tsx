@@ -112,12 +112,15 @@ export function KitListScreen() {
         ListHeaderComponent={
           <View style={s.header}>
             <Text style={s.title}>Мои аптечки</Text>
-            <IconButton icon="plus" onPress={() => navigation.navigate('CreateEditKit', {})} />
+            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              <IconButton icon="view-list" onPress={() => navigation.navigate('AllMedicines')} />
+              <IconButton icon="plus" onPress={() => navigation.navigate('CreateEditKit', {})} />
+            </View>
           </View>
         }
         ListEmptyComponent={
           <EmptyState
-            kitten="waving"
+            kitten="kit"
             title="Нет аптечек"
             subtitle="Создайте первую аптечку"
             actionLabel="Создать аптечку"

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
+  Image, ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -13,6 +14,15 @@ import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import DatePicker from 'react-native-date-picker';
 import { inferMedicineTags } from '../utils/medicineTags';
+import { fetchMedicinePhoto } from '../utils/medicinePhoto';
+
+let launchCamera: any;
+let launchImageLibrary: any;
+try {
+  const ip = require('react-native-image-picker');
+  launchCamera       = ip.launchCamera;
+  launchImageLibrary = ip.launchImageLibrary;
+} catch {}
 
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'ManualEntry'>;
 
@@ -143,6 +153,24 @@ function makeStyles(C: ColorPalette) {
     },
     saveBtnText: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: C.white },
 
+    // Photo
+    photoSection:   { alignItems: 'center', paddingVertical: Spacing.md },
+    photoThumb:     { width: 120, height: 120, borderRadius: Radius.xl, marginBottom: Spacing.md },
+    photoPlaceholder: {
+      width: 120, height: 120, borderRadius: Radius.xl,
+      backgroundColor: C.bgCardAlt, borderWidth: 2, borderStyle: 'dashed', borderColor: C.border,
+      alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
+    },
+    photoActions:   { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
+    photoBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingHorizontal: Spacing.md, paddingVertical: 7,
+      borderRadius: Radius.pill, borderWidth: 1.5, borderColor: C.blue, backgroundColor: C.bgCard,
+    },
+    photoBtnText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.blue },
+    photoRemoveBtn: { marginTop: Spacing.xs },
+    photoRemoveText: { fontSize: Typography.size.body, color: C.danger, fontWeight: Typography.weight.semibold },
+
     // Field sub-styles
     fieldWrap:  { marginBottom: Spacing.md },
     fieldLabel: {
@@ -195,6 +223,8 @@ export function ManualEntryScreen() {
   const [selectedKitId,    setSelectedKitId]    = useState(kitId ?? kits[0]?.id ?? '');
   const [tags,             setTags]             = useState<string[]>([]);
   const [autoTagsDismissed, setAutoTagsDismissed] = useState(false);
+  const [photoUri,         setPhotoUri]         = useState<string | undefined>(undefined);
+  const [photoSearching,   setPhotoSearching]   = useState(false);
 
   // Auto-tag: infer tags from name + active ingredient after a short delay
   const suggestedTags = useMemo(() => {
@@ -224,6 +254,7 @@ export function ManualEntryScreen() {
       setWarnings(existingMed.warnings ?? []);
       setSelectedKitId(existingMed.kitId);
       setTags(existingMed.tags ?? []);
+      if (existingMed.photoUri) setPhotoUri(existingMed.photoUri);
     } else if (prefill) {
       if (prefill.name)             setName(prefill.name);
       if (prefill.manufacturer)     setManufacturer(prefill.manufacturer);
@@ -233,6 +264,7 @@ export function ManualEntryScreen() {
       if (prefill.composition)      setComposition(prefill.composition.map((c: any) => ({ name: c.name, amount: c.amount ?? '' })));
       if (prefill.warnings)         setWarnings(prefill.warnings);
       if (prefill.tags?.length)     setTags(prefill.tags);
+      if (prefill.photoUri)         setPhotoUri(prefill.photoUri);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -251,6 +283,30 @@ export function ManualEntryScreen() {
   }
   function removeComposition(index: number) {
     setComposition(prev => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleCamera() {
+    if (!launchCamera) { Alert.alert('Камера недоступна'); return; }
+    const result = await launchCamera({ mediaType: 'photo', quality: 0.85, maxWidth: 900, maxHeight: 900 });
+    if (result.assets?.[0]?.uri) setPhotoUri(result.assets[0].uri);
+  }
+
+  async function handleGallery() {
+    if (!launchImageLibrary) { Alert.alert('Галерея недоступна'); return; }
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.85, maxWidth: 900, maxHeight: 900 });
+    if (result.assets?.[0]?.uri) setPhotoUri(result.assets[0].uri);
+  }
+
+  async function handleSearchApiPhoto() {
+    if (!name.trim()) { Alert.alert('Введите название', 'Для поиска фото нужно название препарата.'); return; }
+    setPhotoSearching(true);
+    const uri = await fetchMedicinePhoto(name);
+    setPhotoSearching(false);
+    if (uri) {
+      setPhotoUri(uri);
+    } else {
+      Alert.alert('Фото не найдено', 'Попробуйте другое написание или добавьте фото вручную.');
+    }
   }
 
   function handleSave() {
@@ -279,6 +335,7 @@ export function ManualEntryScreen() {
       notes:             notes.trim() || undefined,
       warnings:          warnings.length > 0 ? warnings : undefined,
       tags:              tags.length > 0 ? tags : undefined,
+      photoUri:          photoUri || undefined,
     };
 
     if (existingMed && medicineId) {
@@ -295,6 +352,39 @@ export function ManualEntryScreen() {
     <SafeAreaView style={st.root}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled">
+
+          {/* ── Photo ── */}
+          <Text style={st.sectionTitle}>Фото</Text>
+          <View style={[st.card, st.photoSection]}>
+            {photoUri ? (
+              <>
+                <Image source={{ uri: photoUri }} style={st.photoThumb} resizeMode="cover" />
+                <TouchableOpacity style={st.photoRemoveBtn} onPress={() => setPhotoUri(undefined)}>
+                  <Text style={st.photoRemoveText}>Удалить фото</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={st.photoPlaceholder}>
+                <Icon name="camera-plus-outline" size={36} color={C.textTertiary} />
+              </View>
+            )}
+            <View style={st.photoActions}>
+              <TouchableOpacity style={st.photoBtn} onPress={handleCamera} activeOpacity={0.8}>
+                <Icon name="camera" size={14} color={C.blue} />
+                <Text style={st.photoBtnText}>Камера</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={st.photoBtn} onPress={handleGallery} activeOpacity={0.8}>
+                <Icon name="image" size={14} color={C.blue} />
+                <Text style={st.photoBtnText}>Галерея</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={st.photoBtn} onPress={handleSearchApiPhoto} activeOpacity={0.8} disabled={photoSearching}>
+                {photoSearching
+                  ? <ActivityIndicator size="small" color={C.blue} />
+                  : <Icon name="web-search" size={14} color={C.blue} />}
+                <Text style={st.photoBtnText}>Найти онлайн</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* ── Basic info ── */}
           <Text style={st.sectionTitle}>Основное</Text>

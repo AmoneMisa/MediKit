@@ -261,7 +261,7 @@ export function KitDetailScreen() {
         contentContainerStyle={s.list}
         ListEmptyComponent={
           <EmptyState
-            kitten="sleeping"
+            kitten="confused"
             title={query ? 'Ничего не найдено' : 'Нет препаратов'}
             subtitle={query ? 'Попробуйте другое название' : 'Добавьте первый препарат в аптечку'}
             actionLabel={query ? undefined : 'Добавить препарат'}

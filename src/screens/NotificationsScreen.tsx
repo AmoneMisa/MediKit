@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, TextInput, Alert,
+  TextInput, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -370,7 +371,7 @@ export function NotificationsScreen() {
           contentContainerStyle={s.list}
           ListEmptyComponent={
             <EmptyState
-              kitten="pill"
+              kitten="confused"
               title={t('no_reminders')}
               subtitle={t('no_reminders_sub')}
               actionLabel={t('add_reminder')}

@@ -137,6 +137,38 @@ export interface MedicineReminder {
   createdAt: string;
 }
 
+// ─── Shopping list ────────────────────────────────────────────────────────────
+
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  form?: MedicineForm;
+  dosage?: string;
+  quantity: number;
+  notes?: string;
+  prefill?: MedicinePrefill;
+  createdAt: string;
+}
+
+// ─── Medicine journal ─────────────────────────────────────────────────────────
+
+export interface IntakeMedicineEntry {
+  medicineId?: string;
+  medicineName: string;
+  quantity: number;
+  unit: string;       // шт / мл / кап
+}
+
+export interface MedicineIntakeLog {
+  id: string;
+  date: string;       // "YYYY-MM-DD"
+  time: string;       // "HH:MM"
+  entries: IntakeMedicineEntry[];
+  symptoms: string[];
+  notes?: string;
+  createdAt: string;
+}
+
 // ─── Navigation ──────────────────────────────────────────────────────────────
 
 export interface Person {
@@ -170,10 +202,19 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   KitsTab: undefined;
+  ShoppingTab: undefined;
+  JournalTab: undefined;
   NotificationsTab: undefined;
-  ExpiryTab: undefined;
-  PersonsTab: undefined;
   ProfileTab: undefined;
+};
+
+export type ShoppingStackParamList = {
+  ShoppingList: undefined;
+};
+
+export type JournalStackParamList = {
+  JournalHome: undefined;
+  AddIntakeLog: { date?: string; logId?: string };
 };
 
 export type NotificationsStackParamList = {
@@ -204,4 +245,7 @@ export type ProfileStackParamList = {
   ProfileHome: undefined;
   Settings: undefined;
   Support: undefined;
+  Persons: undefined;
+  Expiry: undefined;
+  MedicineDetail: { medicineId: string; kitId: string };
 };

@@ -3,13 +3,15 @@ import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import type {
   RootStackParamList, MainTabParamList, KitsStackParamList,
-  ProfileStackParamList, PersonsStackParamList, NotificationsStackParamList,
+  ProfileStackParamList, NotificationsStackParamList,
+  ShoppingStackParamList, JournalStackParamList,
 } from '../types';
-import { Typography } from '../theme';
+import { Typography, Spacing } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useUnreadCount } from '../hooks';
 import { ThemeProvider, useIsDark, useColors } from '../context/ThemeContext';
@@ -30,6 +32,9 @@ import { SyncMembersScreen }      from '../screens/SyncMembersScreen';
 import { ActivityHistoryScreen }  from '../screens/ActivityHistoryScreen';
 import { CreateEditKitScreen }    from '../screens/CreateEditKitScreen';
 import { PersonsScreen }          from '../screens/PersonsScreen';
+import { ShoppingListScreen }     from '../screens/ShoppingListScreen';
+import { MedicineJournalScreen }  from '../screens/MedicineJournalScreen';
+import { AddIntakeLogScreen }     from '../screens/AddIntakeLogScreen';
 import {
   ShareKitScreen, ProfileScreen, SettingsScreen,
 } from '../screens/screens';
@@ -39,7 +44,8 @@ const Tab          = createBottomTabNavigator<MainTabParamList>();
 const KitsStack    = createNativeStackNavigator<KitsStackParamList>();
 const NotifStack   = createNativeStackNavigator<NotificationsStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
-const PersonsStack = createNativeStackNavigator<PersonsStackParamList>();
+const ShoppingStack = createNativeStackNavigator<ShoppingStackParamList>();
+const JournalStack  = createNativeStackNavigator<JournalStackParamList>();
 
 // ── Screen options factory ─────────────────────────────────────────────────────
 
@@ -107,6 +113,43 @@ function KitsStackNavigator() {
   );
 }
 
+// ── Shopping Stack ────────────────────────────────────────────────────────────
+
+function ShoppingStackNavigator() {
+  const C = useColors();
+  const so = makeScreenOpts(C);
+  return (
+    <ShoppingStack.Navigator screenOptions={so}>
+      <ShoppingStack.Screen
+        name="ShoppingList"
+        component={ShoppingListScreen}
+        options={{ headerShown: false }}
+      />
+    </ShoppingStack.Navigator>
+  );
+}
+
+// ── Journal Stack ─────────────────────────────────────────────────────────────
+
+function JournalStackNavigator() {
+  const C = useColors();
+  const so = makeScreenOpts(C);
+  return (
+    <JournalStack.Navigator screenOptions={so}>
+      <JournalStack.Screen
+        name="JournalHome"
+        component={MedicineJournalScreen}
+        options={{ headerShown: false }}
+      />
+      <JournalStack.Screen
+        name="AddIntakeLog"
+        component={AddIntakeLogScreen}
+        options={{ title: 'Запись о приёме' }}
+      />
+    </JournalStack.Navigator>
+  );
+}
+
 // ── Notifications Stack ───────────────────────────────────────────────────────
 
 function NotificationsStackNavigator() {
@@ -128,28 +171,19 @@ function NotificationsStackNavigator() {
   );
 }
 
-// ── Profile Stack ─────────────────────────────────────────────────────────────
+// ── Profile Stack (includes Persons, Settings, Expiry) ───────────────────────
 
 function ProfileStackNavigator() {
   const C = useColors();
   const so = makeScreenOpts(C);
   return (
     <ProfileStack.Navigator screenOptions={so}>
-      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen}  options={{ title: 'Профиль' }} />
-      <ProfileStack.Screen name="Settings"    component={SettingsScreen} options={{ title: 'Настройки' }} />
+      <ProfileStack.Screen name="ProfileHome"    component={ProfileScreen}        options={{ title: 'Профиль' }} />
+      <ProfileStack.Screen name="Settings"       component={SettingsScreen}       options={{ title: 'Настройки' }} />
+      <ProfileStack.Screen name="Persons"        component={PersonsScreen}        options={{ title: 'Контакты' }} />
+      <ProfileStack.Screen name="Expiry"         component={ExpiryScreen}         options={{ title: 'Сроки годности' }} />
+      <ProfileStack.Screen name="MedicineDetail" component={MedicineDetailScreen} options={{ title: '' }} />
     </ProfileStack.Navigator>
-  );
-}
-
-// ── Persons Stack ─────────────────────────────────────────────────────────────
-
-function PersonsStackNavigator() {
-  const C = useColors();
-  const so = makeScreenOpts(C);
-  return (
-    <PersonsStack.Navigator screenOptions={so}>
-      <PersonsStack.Screen name="PersonsList" component={PersonsScreen} options={{ title: 'Контакты' }} />
-    </PersonsStack.Navigator>
   );
 }
 
@@ -157,8 +191,11 @@ function PersonsStackNavigator() {
 
 function MainTabs() {
   const unread = useUnreadCount();
-  const isDark = useIsDark();
   const C      = useColors();
+  const insets = useSafeAreaInsets();
+
+  // Tab bar height = 52px content + bottom safe area
+  const tabBarHeight = 52 + insets.bottom;
 
   return (
     <Tab.Navigator
@@ -168,9 +205,9 @@ function MainTabs() {
           backgroundColor: C.bgCard,
           borderTopColor:  C.border,
           borderTopWidth:  1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height:          tabBarHeight,
+          paddingBottom:   insets.bottom + 4,
+          paddingTop:      6,
         },
         tabBarActiveTintColor:   C.blue,
         tabBarInactiveTintColor: C.textSecondary,
@@ -186,31 +223,28 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="ShoppingTab"
+        component={ShoppingStackNavigator}
+        options={{
+          tabBarLabel: 'Купить',
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? 'cart' : 'cart-outline'} focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="JournalTab"
+        component={JournalStackNavigator}
+        options={{
+          tabBarLabel: 'Журнал',
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? 'calendar-check' : 'calendar-check-outline'} focused={focused} />,
+        }}
+      />
+      <Tab.Screen
         name="NotificationsTab"
         component={NotificationsStackNavigator}
         options={{
           tabBarLabel: 'Уведомл.',
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'bell' : 'bell-outline'} focused={focused} badge={unread} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ExpiryTab"
-        component={ExpiryScreen}
-        options={{
-          tabBarLabel: 'Сроки',
-          tabBarIcon: ({ focused }) => <TabIcon name="calendar-clock" focused={focused} />,
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="PersonsTab"
-        component={PersonsStackNavigator}
-        options={{
-          tabBarLabel: 'Контакты',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'account-group' : 'account-group-outline'} focused={focused} />
           ),
         }}
       />

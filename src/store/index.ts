@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { MMKV } from 'react-native-mmkv';
-import type { MedicineKit, Medicine, AppNotification, UserProfile, AppSettings, MedicineStatus, Person, MedicineReminder } from '../types';
+import type { MedicineKit, Medicine, AppNotification, UserProfile, AppSettings, MedicineStatus, Person, MedicineReminder, ShoppingItem, MedicineIntakeLog } from '../types';
 
 const mmkv = new MMKV({ id: 'medikit-store' });
 
@@ -46,6 +46,8 @@ interface AppStore {
   notifications: AppNotification[];
   persons: Person[];
   reminders: MedicineReminder[];
+  shoppingItems: ShoppingItem[];
+  intakeLogs: MedicineIntakeLog[];
   settings: AppSettings;
 
   updateUser: (changes: Partial<UserProfile>) => void;
@@ -71,6 +73,15 @@ interface AppStore {
   updateReminder: (id: string, changes: Partial<MedicineReminder>) => void;
   deleteReminder: (id: string) => void;
   markReminderTaken: (id: string) => void;
+
+  addShoppingItem: (item: ShoppingItem) => void;
+  updateShoppingItem: (id: string, changes: Partial<ShoppingItem>) => void;
+  deleteShoppingItem: (id: string) => void;
+
+  addIntakeLog: (log: MedicineIntakeLog) => void;
+  updateIntakeLog: (id: string, changes: Partial<MedicineIntakeLog>) => void;
+  deleteIntakeLog: (id: string) => void;
+  getIntakeLogsForDate: (date: string) => MedicineIntakeLog[];
 
   updateSettings: (changes: Partial<AppSettings>) => void;
 
@@ -101,6 +112,8 @@ export const useAppStore = create<AppStore>()(
       notifications: [],
       persons: [],
       reminders: [],
+      shoppingItems: [],
+      intakeLogs: [],
       settings: {
         theme: 'system',
         language: 'ru',
@@ -189,6 +202,19 @@ export const useAppStore = create<AppStore>()(
             : s.medicines;
           return { reminders: updatedReminders, medicines: updatedMedicines };
         }),
+
+      addShoppingItem: item => set(s => ({ shoppingItems: [...s.shoppingItems, item] })),
+      updateShoppingItem: (id, changes) =>
+        set(s => ({ shoppingItems: s.shoppingItems.map(i => i.id === id ? { ...i, ...changes } : i) })),
+      deleteShoppingItem: id =>
+        set(s => ({ shoppingItems: s.shoppingItems.filter(i => i.id !== id) })),
+
+      addIntakeLog: log => set(s => ({ intakeLogs: [...s.intakeLogs, log] })),
+      updateIntakeLog: (id, changes) =>
+        set(s => ({ intakeLogs: s.intakeLogs.map(l => l.id === id ? { ...l, ...changes } : l) })),
+      deleteIntakeLog: id =>
+        set(s => ({ intakeLogs: s.intakeLogs.filter(l => l.id !== id) })),
+      getIntakeLogsForDate: date => get().intakeLogs.filter(l => l.date === date),
 
       updateSettings: changes => set(s => ({ settings: { ...s.settings, ...changes } })),
 

@@ -8,6 +8,7 @@ import { useColors } from '../context/ThemeContext';
 import {
   KittenSleeping, KittenWaving, KittenWithPill, KittenDoctor,
 } from '../assets/kittens/KittenSVG';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export { KittenSleeping, KittenWaving, KittenWithPill, KittenDoctor };
 
@@ -81,9 +82,11 @@ export const KitThumb: React.FC<{
 // ─── IconButton ───────────────────────────────────────────────────────────────
 
 export const IconButton: React.FC<{
-  emoji: string; onPress?: () => void; style?: ViewStyle; size?: number;
-}> = ({ emoji, onPress, style, size = 36 }) => {
+  icon?: string; emoji?: string;
+  onPress?: () => void; style?: ViewStyle; size?: number;
+}> = ({ icon, emoji, onPress, style, size = 36 }) => {
   const C = useColors();
+  const iconSize = Math.round(size * 0.52);
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -93,7 +96,10 @@ export const IconButton: React.FC<{
       }, style]}
       activeOpacity={0.7}
     >
-      <Text style={{ fontSize: Math.round(size * 0.47) }}>{emoji}</Text>
+      {icon
+        ? <Icon name={icon} size={iconSize} color={C.textPrimary} />
+        : <Text style={{ fontSize: Math.round(size * 0.47) }}>{emoji}</Text>
+      }
     </TouchableOpacity>
   );
 };

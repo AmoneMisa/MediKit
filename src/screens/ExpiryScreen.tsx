@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { KitsStackParamList, Medicine } from '../types';
+import type { ProfileStackParamList, Medicine } from '../types';
 import { useAllMedicinesSortedByExpiry, useExpiryLabel } from '../hooks';
 import { getMedicineStatus } from '../store';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
@@ -11,7 +11,7 @@ import { useColors } from '../context/ThemeContext';
 import { EmptyState } from '../components';
 import { differenceInDays, parseISO } from 'date-fns';
 
-type Nav = NativeStackNavigationProp<KitsStackParamList, 'KitList'>;
+type Nav = NativeStackNavigationProp<ProfileStackParamList, 'Expiry'>;
 
 // ── Styles factory ─────────────────────────────────────────────────────────────
 

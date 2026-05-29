@@ -12,6 +12,7 @@ import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { MedicineIcon, StatusBadge, EmptyState, FilterPill } from '../components';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type Nav   = NativeStackNavigationProp<KitsStackParamList, 'KitDetail'>;
 type Route = RouteProp<KitsStackParamList, 'KitDetail'>;
@@ -74,7 +75,7 @@ function makeStyles(C: ColorPalette) {
       marginBottom: Spacing.md, height: 44, gap: Spacing.sm,
     },
     searchIcon:  { fontSize: 16, color: C.textTertiary },
-    searchInput: { flex: 1, fontSize: Typography.size.md, color: C.textPrimary },
+    searchInput: { flex: 1, fontSize: Typography.size.md, color: C.textPrimary, textAlignVertical: 'center' },
 
     list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
     medCard: {
@@ -195,7 +196,7 @@ export function KitDetailScreen() {
           </View>
         </View>
         <TouchableOpacity style={s.menuBtn} onPress={() => setMenuOpen(true)} activeOpacity={0.7}>
-          <Text style={s.menuDots}>•••</Text>
+          <Icon name="dots-horizontal" size={24} color={C.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -248,7 +249,7 @@ export function KitDetailScreen() {
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery('')}>
-            <Text style={{ fontSize: 16, color: C.textTertiary }}>✕</Text>
+            <Icon name="close" size={18} color={C.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
@@ -295,7 +296,7 @@ export function KitDetailScreen() {
         onPress={() => navigation.navigate('AddMedicine', { kitId })}
         activeOpacity={0.85}
       >
-        <Text style={s.fabText}>＋</Text>
+        <Icon name="plus" size={30} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* Actions menu */}
@@ -306,7 +307,7 @@ export function KitDetailScreen() {
             <Text style={s.menuTitle}>{kit.name}</Text>
 
             <TouchableOpacity style={s.menuRow} onPress={handleEdit} activeOpacity={0.8}>
-              <Text style={s.menuRowIcon}>✏️</Text>
+              <Icon name="pencil" size={20} color={C.textSecondary} style={s.menuRowIcon as any} />
               <Text style={s.menuRowText}>Редактировать аптечку</Text>
             </TouchableOpacity>
 
@@ -315,7 +316,7 @@ export function KitDetailScreen() {
               onPress={() => { setMenuOpen(false); navigation.navigate('ShareKit', { kitId }); }}
               activeOpacity={0.8}
             >
-              <Text style={s.menuRowIcon}>↗️</Text>
+              <Icon name="share-variant" size={20} color={C.textSecondary} style={s.menuRowIcon as any} />
               <Text style={s.menuRowText}>Поделиться аптечкой</Text>
             </TouchableOpacity>
 
@@ -324,14 +325,14 @@ export function KitDetailScreen() {
               onPress={() => { setMenuOpen(false); navigation.navigate('SyncMembers', { kitId }); }}
               activeOpacity={0.8}
             >
-              <Text style={s.menuRowIcon}>👥</Text>
+              <Icon name="account-group" size={20} color={C.textSecondary} style={s.menuRowIcon as any} />
               <Text style={s.menuRowText}>Участники</Text>
             </TouchableOpacity>
 
             <View style={s.menuDivider} />
 
             <TouchableOpacity style={s.menuRow} onPress={handleDelete} activeOpacity={0.8}>
-              <Text style={s.menuRowIcon}>🗑️</Text>
+              <Icon name="delete" size={20} color={C.danger} style={s.menuRowIcon as any} />
               <Text style={[s.menuRowText, { color: C.danger }]}>Удалить аптечку</Text>
             </TouchableOpacity>
           </View>

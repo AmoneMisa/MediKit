@@ -1,43 +1,60 @@
-// ─── AddMedicineScreen ────────────────────────────────────────────────────────
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { KitsStackParamList } from '../types';
-import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
+import { Spacing, Typography, Radius, Shadow } from '../theme';
+import type { ColorPalette } from '../theme';
+import { useColors } from '../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'AddMedicine'>;
+
+function makeStyles(C: ColorPalette) {
+  return StyleSheet.create({
+    root:     { flex: 1, backgroundColor: C.bgPage },
+    scroll:   { padding: Spacing.lg },
+    title:    { fontSize: Typography.size.xxl, fontWeight: Typography.weight.extrabold, color: C.textPrimary, marginBottom: Spacing.xs },
+    subtitle: { fontSize: Typography.size.body, color: C.textSecondary, marginBottom: Spacing.lg },
+    option: {
+      backgroundColor: C.bgCard, borderRadius: Radius.xl,
+      padding: Spacing.lg, marginBottom: Spacing.md,
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md, ...Shadow.card,
+    },
+    optIcon:  { width: 50, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    optTitle: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: C.textPrimary },
+    optSub:   { fontSize: Typography.size.body, color: C.textSecondary, marginTop: 2 },
+    chevron:  { color: C.textTertiary },
+  });
+}
 
 export function AddMedicineScreen() {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<any>();
   const kitId: string = route.params?.kitId ?? 'kit-1';
+  const C = useColors();
+  const s = useMemo(() => makeStyles(C), [C]);
 
   const OPTIONS = [
     {
       emoji:    '📷',
-      bg:       ['#C8E8FF', '#78BFFF'],
+      bg:       '#C8E8FF',
       title:    'Сканировать упаковку',
       subtitle: 'Штрих-код, QR или фото блистера',
       onPress:  () => navigation.navigate('ScanMedicine', { kitId }),
     },
     {
       emoji:    '🔍',
-      bg:       ['#D8C8FF', '#A080FF'],
+      bg:       '#D8C8FF',
       title:    'Найти в базе',
       subtitle: 'Поиск по названию препарата',
       onPress:  () => navigation.navigate('SearchMedicine', { kitId }),
     },
     {
       emoji:    '✏️',
-      bg:       ['#C8FFD8', '#56CE88'],
+      bg:       '#C8FFD8',
       title:    'Ввести вручную',
       subtitle: 'Название, форма, количество, срок',
       onPress:  () => navigation.navigate('ManualEntry', { kitId }),
@@ -48,57 +65,21 @@ export function AddMedicineScreen() {
     <SafeAreaView style={s.root}>
       <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.title}>Добавить препарат</Text>
-        <Text style={s.subtitle}>
-          Выберите способ — мы заполним всё автоматически 🚀
-        </Text>
+        <Text style={s.subtitle}>Выберите способ — мы заполним всё автоматически 🚀</Text>
 
         {OPTIONS.map(o => (
-          <TouchableOpacity
-            key={o.title}
-            style={s.option}
-            onPress={o.onPress}
-            activeOpacity={0.85}
-          >
-            <View style={[s.optIcon, { backgroundColor: o.bg[0] }]}>
+          <TouchableOpacity key={o.title} style={s.option} onPress={o.onPress} activeOpacity={0.85}>
+            <View style={[s.optIcon, { backgroundColor: o.bg }]}>
               <Text style={{ fontSize: 24 }}>{o.emoji}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.optTitle}>{o.title}</Text>
               <Text style={s.optSub}>{o.subtitle}</Text>
             </View>
-            <Text style={s.chevron}>›</Text>
+            <Icon name="chevron-right" size={22} color={C.textTertiary} />
           </TouchableOpacity>
         ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const s = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Colors.bgPage },
-  scroll:  { padding: Spacing.lg },
-  title:   {
-    fontSize: Typography.size.xxl, fontWeight: Typography.weight.extrabold,
-    color: Colors.textPrimary, marginBottom: Spacing.xs,
-  },
-  subtitle: {
-    fontSize: Typography.size.body, color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-  },
-  option: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
-    padding: Spacing.lg, marginBottom: Spacing.md,
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    ...Shadow.card,
-  },
-  optIcon: {
-    width: 50, height: 50, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  optTitle: {
-    fontSize: Typography.size.lg, fontWeight: Typography.weight.bold,
-    color: Colors.textPrimary,
-  },
-  optSub:   { fontSize: Typography.size.body, color: Colors.textSecondary, marginTop: 2 },
-  chevron:  { fontSize: 20, color: Colors.textTertiary },
-});

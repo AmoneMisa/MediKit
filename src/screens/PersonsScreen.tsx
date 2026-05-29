@@ -1,12 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, Alert, TextInput, Modal, KeyboardAvoidingView, Platform, ScrollView,
+  SafeAreaView, Alert, TextInput, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../store';
-import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
+import { Spacing, Typography, Radius, Shadow } from '../theme';
+import type { ColorPalette } from '../theme';
+import { useColors } from '../context/ThemeContext';
 import { EmptyState } from '../components';
 import type { Person } from '../types';
+
+function makeStyles(C: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bgPage },
+
+    myCard: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.blue, margin: Spacing.lg,
+      borderRadius: Radius.xl, padding: Spacing.lg, ...Shadow.card,
+    },
+    myAvatar: {
+      width: 52, height: 52, borderRadius: 26,
+      backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center',
+    },
+    myAvatarText: { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: '#FFFFFF' },
+    myName:       { fontSize: Typography.size.lg, fontWeight: Typography.weight.extrabold, color: '#FFFFFF' },
+    myNickname:   { fontSize: Typography.size.base, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+    myHint:       { fontSize: Typography.size.xs, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
+
+    listHeader: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm,
+    },
+    listTitle: {
+      fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
+      color: C.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    addBtn:    { backgroundColor: C.blue, borderRadius: Radius.xl, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: 4, ...Shadow.sm },
+    addBtnText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.white },
+
+    list: { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
+    card: {
+      backgroundColor: C.bgCard, borderRadius: Radius.xl,
+      padding: Spacing.md, marginBottom: Spacing.md,
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md, ...Shadow.card,
+    },
+    avatar:     { width: 46, height: 46, borderRadius: 23, backgroundColor: C.blueLight, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { fontSize: Typography.size.base, fontWeight: Typography.weight.extrabold, color: C.blue },
+    info:       { flex: 1 },
+    personName:     { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: C.textPrimary },
+    personNickname: { fontSize: Typography.size.body, color: C.blue, marginTop: 1 },
+    kitsLabel:  { fontSize: Typography.size.xs, color: C.success, marginTop: Spacing.xs, fontWeight: Typography.weight.semibold },
+    noKits:     { fontSize: Typography.size.xs, color: C.textTertiary, marginTop: Spacing.xs },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+    modal: {
+      backgroundColor: C.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: Spacing.xl, paddingBottom: Spacing.xxxl,
+    },
+    modalTitle: {
+      fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold,
+      color: C.textPrimary, marginBottom: Spacing.xs,
+    },
+    modalSub: { fontSize: Typography.size.body, color: C.textSecondary, marginBottom: Spacing.lg },
+    fieldLabel: {
+      fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
+      color: C.textSecondary, textTransform: 'uppercase',
+      letterSpacing: 0.4, marginBottom: 5,
+    },
+    fieldInput: {
+      backgroundColor: C.bgCardAlt, borderRadius: Radius.sm,
+      borderWidth: 1.5, borderColor: C.border,
+      paddingHorizontal: Spacing.md, height: 44,
+      fontSize: Typography.size.md, color: C.textPrimary, marginBottom: Spacing.md,
+      textAlignVertical: 'center',
+    },
+    saveBtn: {
+      backgroundColor: C.blue, borderRadius: Radius.xl,
+      padding: Spacing.md, alignItems: 'center', marginTop: Spacing.sm, ...Shadow.card,
+    },
+    saveBtnText:  { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: C.white },
+    cancelBtn:    { alignItems: 'center', padding: Spacing.md, marginTop: Spacing.sm },
+    cancelBtnText: { fontSize: Typography.size.base, color: C.textSecondary },
+  });
+}
 
 export function PersonsScreen() {
   const persons      = useAppStore(s => s.persons);
@@ -14,6 +93,9 @@ export function PersonsScreen() {
   const deletePerson = useAppStore(s => s.deletePerson);
   const user         = useAppStore(s => s.user);
   const kits         = useAppStore(s => s.kits);
+  const C      = useColors();
+  const s      = useMemo(() => makeStyles(C), [C]);
+  const insets = useSafeAreaInsets();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [name,         setName]         = useState('');
@@ -32,16 +114,16 @@ export function PersonsScreen() {
       return;
     }
     const displayName = [name.trim(), surname.trim()].filter(Boolean).join(' ') || trimNickname;
-    const words = displayName.split(/\s+/);
+    const words    = displayName.split(/\s+/);
     const initials = words.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
     addPerson({
-      id:            `person-${Date.now()}`,
-      name:          displayName,
-      surname:       surname.trim() || undefined,
-      nickname:      trimNickname,
+      id:             `person-${Date.now()}`,
+      name:           displayName,
+      surname:        surname.trim() || undefined,
+      nickname:       trimNickname,
       avatarInitials: initials || trimNickname.slice(0, 2).toUpperCase(),
-      sharedKitIds:  [],
-      createdAt:     new Date().toISOString(),
+      sharedKitIds:   [],
+      createdAt:      new Date().toISOString(),
     });
     setModalVisible(false);
   }
@@ -72,7 +154,8 @@ export function PersonsScreen() {
       <View style={s.listHeader}>
         <Text style={s.listTitle}>Контакты MediKit</Text>
         <TouchableOpacity style={s.addBtn} onPress={openModal} activeOpacity={0.85}>
-          <Text style={s.addBtnText}>＋ Добавить</Text>
+          <Icon name="plus" size={14} color={C.white} />
+          <Text style={s.addBtnText}>Добавить</Text>
         </TouchableOpacity>
       </View>
 
@@ -82,7 +165,7 @@ export function PersonsScreen() {
         contentContainerStyle={s.list}
         ListEmptyComponent={
           <EmptyState
-            emoji="👥"
+            kitten="waving"
             title="Нет контактов"
             subtitle="Добавьте других пользователей MediKit по никнейму, чтобы делиться аптечками"
             actionLabel="Добавить контакт"
@@ -111,7 +194,7 @@ export function PersonsScreen() {
                 onPress={() => handleDelete(item)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={s.deleteIcon}>✕</Text>
+                <Icon name="close" size={18} color={C.textTertiary} />
               </TouchableOpacity>
             </View>
           );
@@ -123,7 +206,7 @@ export function PersonsScreen() {
           style={s.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={s.modal}>
+          <View style={[s.modal, { paddingBottom: Math.max(Spacing.xxxl, insets.bottom + Spacing.lg) }]}>
             <Text style={s.modalTitle}>Добавить контакт</Text>
             <Text style={s.modalSub}>Введите никнейм пользователя MediKit</Text>
 
@@ -131,28 +214,26 @@ export function PersonsScreen() {
             <TextInput
               style={s.fieldInput}
               placeholder="@nickname"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={C.textTertiary}
               value={nickname}
               onChangeText={t => setNickname(t.startsWith('@') ? t : `@${t}`)}
               autoCapitalize="none"
               returnKeyType="next"
             />
-
             <Text style={s.fieldLabel}>Имя</Text>
             <TextInput
               style={s.fieldInput}
               placeholder="Имя"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={C.textTertiary}
               value={name}
               onChangeText={setName}
               returnKeyType="next"
             />
-
             <Text style={s.fieldLabel}>Фамилия</Text>
             <TextInput
               style={s.fieldInput}
               placeholder="Фамилия"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={C.textTertiary}
               value={surname}
               onChangeText={setSurname}
               returnKeyType="done"
@@ -170,82 +251,3 @@ export function PersonsScreen() {
     </SafeAreaView>
   );
 }
-
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bgPage },
-
-  myCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.blue, margin: Spacing.lg,
-    borderRadius: Radius.xl, padding: Spacing.lg, ...Shadow.card,
-  },
-  myAvatar: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center',
-  },
-  myAvatarText: { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: Colors.white },
-  myName: { fontSize: Typography.size.lg, fontWeight: Typography.weight.extrabold, color: Colors.white },
-  myNickname: { fontSize: Typography.size.base, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
-  myHint: { fontSize: Typography.size.xs, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
-
-  listHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm,
-  },
-  listTitle: {
-    fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
-    color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  addBtn: {
-    backgroundColor: Colors.blue, borderRadius: Radius.xl,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, ...Shadow.sm,
-  },
-  addBtnText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.white },
-
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
-    padding: Spacing.md, marginBottom: Spacing.md,
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md, ...Shadow.card,
-  },
-  avatar: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: Colors.blueLight, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { fontSize: Typography.size.base, fontWeight: Typography.weight.extrabold, color: Colors.blue },
-  info: { flex: 1 },
-  personName: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: Colors.textPrimary },
-  personNickname: { fontSize: Typography.size.body, color: Colors.blue, marginTop: 1 },
-  kitsLabel: { fontSize: Typography.size.xs, color: Colors.success, marginTop: Spacing.xs, fontWeight: Typography.weight.semibold },
-  noKits: { fontSize: Typography.size.xs, color: Colors.textTertiary, marginTop: Spacing.xs },
-  deleteIcon: { fontSize: 16, color: Colors.textTertiary },
-
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modal: {
-    backgroundColor: Colors.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: Spacing.xl, paddingBottom: Spacing.xxxl,
-  },
-  modalTitle: {
-    fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold,
-    color: Colors.textPrimary, marginBottom: Spacing.xs,
-  },
-  modalSub: { fontSize: Typography.size.body, color: Colors.textSecondary, marginBottom: Spacing.lg },
-  fieldLabel: {
-    fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
-    color: Colors.textSecondary, textTransform: 'uppercase',
-    letterSpacing: 0.4, marginBottom: 5,
-  },
-  fieldInput: {
-    backgroundColor: Colors.bgPage, borderRadius: Radius.sm,
-    borderWidth: 1.5, borderColor: Colors.border,
-    paddingHorizontal: Spacing.md, height: 44,
-    fontSize: Typography.size.md, color: Colors.textPrimary, marginBottom: Spacing.md,
-  },
-  saveBtn: {
-    backgroundColor: Colors.blue, borderRadius: Radius.xl,
-    padding: Spacing.md, alignItems: 'center', marginTop: Spacing.sm, ...Shadow.card,
-  },
-  saveBtnText: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: Colors.white },
-  cancelBtn: { alignItems: 'center', padding: Spacing.md, marginTop: Spacing.sm },
-  cancelBtnText: { fontSize: Typography.size.base, color: Colors.textSecondary },
-});

@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, SafeAreaView, Alert, Switch,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { NotificationsStackParamList, MedicineReminder } from '../types';
@@ -55,7 +56,6 @@ function makeStyles(C: ColorPalette) {
     },
     timePillText: { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: C.blueDark },
     removeBtn:     { padding: Spacing.sm, alignItems: 'center', justifyContent: 'center' },
-    removeBtnText: { fontSize: Typography.size.base, color: C.danger },
     addTimeBtn: {
       marginTop: Spacing.sm, borderWidth: 1.5, borderColor: C.borderDashed,
       borderStyle: 'dashed', borderRadius: Radius.md, padding: Spacing.md,
@@ -78,7 +78,6 @@ function makeStyles(C: ColorPalette) {
       width: 44, height: 44, borderRadius: 22, backgroundColor: C.blueLight,
       alignItems: 'center', justifyContent: 'center',
     },
-    pillCountBtnText: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.bold, color: C.blue },
     pillCountBox:     { alignItems: 'center' },
     pillCountText:    { fontSize: 28, fontWeight: Typography.weight.extrabold, color: C.textPrimary },
     pillCountUnit:    { fontSize: Typography.size.body, color: C.textSecondary },
@@ -254,7 +253,7 @@ export function CreateReminderScreen() {
               </TouchableOpacity>
               {times.length > 1 && (
                 <TouchableOpacity onPress={() => removeTime(idx)} style={s.removeBtn} hitSlop={8}>
-                  <Text style={s.removeBtnText}>✕</Text>
+                  <Icon name="close" size={18} color={C.textTertiary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -294,7 +293,7 @@ export function CreateReminderScreen() {
             onPress={() => setPillCount(prev => String(Math.max(1, parseInt(prev) - 1)))}
             activeOpacity={0.8}
           >
-            <Text style={s.pillCountBtnText}>−</Text>
+            <Icon name="minus" size={20} color={C.blue} />
           </TouchableOpacity>
           <View style={s.pillCountBox}>
             <Text style={s.pillCountText}>{pillCount}</Text>
@@ -307,7 +306,7 @@ export function CreateReminderScreen() {
             onPress={() => setPillCount(prev => String(parseInt(prev) + 1))}
             activeOpacity={0.8}
           >
-            <Text style={s.pillCountBtnText}>＋</Text>
+            <Icon name="plus" size={20} color={C.blue} />
           </TouchableOpacity>
         </View>
 
@@ -345,7 +344,7 @@ export function CreateReminderScreen() {
 
         {/* ── Save ── */}
         <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={s.saveBtnText}>💾 {t('save')}</Text>
+          <Text style={s.saveBtnText}>{t('save')}</Text>
         </TouchableOpacity>
 
       </ScrollView>

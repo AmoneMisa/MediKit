@@ -7,10 +7,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { KitsStackParamList, Medicine } from '../types';
 import { useAppStore, getMedicineStatus } from '../store';
 import { useExpiryLabel } from '../hooks';
-import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
+import { Spacing, Typography, Radius, Shadow } from '../theme';
+import type { ColorPalette } from '../theme';
+import { useColors } from '../context/ThemeContext';
 import { WarningBanner, StatusBadge, MedicineIcon } from '../components';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-type Nav = NativeStackNavigationProp<KitsStackParamList, 'MedicineDetail'>;
+type Nav   = NativeStackNavigationProp<KitsStackParamList, 'MedicineDetail'>;
 type Route = RouteProp<KitsStackParamList, 'MedicineDetail'>;
 
 const FORM_LABELS: Record<string, string> = {
@@ -19,11 +22,9 @@ const FORM_LABELS: Record<string, string> = {
   injection: 'Инъекция', powder: 'Порошок', patch: 'Пластырь', other: 'Другое',
 };
 
-/** Check if two medicines are incompatible with each other (bidirectional) */
 function checkIncompatible(a: Medicine, b: Medicine): boolean {
   const bNames = [b.name, b.activeIngredient ?? ''].filter(Boolean).map(s => s.toLowerCase());
   const aNames = [a.name, a.activeIngredient ?? ''].filter(Boolean).map(s => s.toLowerCase());
-
   if (a.incompatibleWith && a.incompatibleWith.length > 0) {
     for (const rule of a.incompatibleWith) {
       const r = rule.toLowerCase();
@@ -39,20 +40,98 @@ function checkIncompatible(a: Medicine, b: Medicine): boolean {
   return false;
 }
 
+function makeStyles(C: ColorPalette) {
+  return StyleSheet.create({
+    root:   { flex: 1, backgroundColor: C.bgPage },
+    scroll: { padding: Spacing.lg, paddingBottom: 40 },
+
+    hero: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,
+      backgroundColor: C.blueLight, borderRadius: Radius.xl,
+      padding: Spacing.lg, marginBottom: Spacing.md,
+    },
+    heroName:  { fontSize: Typography.size.hero, fontWeight: Typography.weight.extrabold, color: C.blueDark },
+    heroForm:  { fontSize: Typography.size.body, color: C.blue, marginTop: 2 },
+    heroManuf: { fontSize: Typography.size.xs, color: C.textSecondary, marginTop: 2, fontStyle: 'italic' },
+
+    card: { backgroundColor: C.bgCard, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md, ...Shadow.card },
+
+    infoRow: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.borderLight,
+    },
+    infoLabel: { fontSize: Typography.size.body, color: C.textSecondary, fontWeight: Typography.weight.semibold },
+    infoVal:   { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: C.textPrimary },
+
+    bar:     { height: 6, borderRadius: Radius.pill, backgroundColor: C.bgCardAlt, marginTop: Spacing.sm, overflow: 'hidden' },
+    barFill: { height: '100%', borderRadius: Radius.pill },
+
+    secTitle: {
+      fontSize: Typography.size.body, fontWeight: Typography.weight.bold,
+      color: C.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm,
+    },
+    bodyText: { fontSize: Typography.size.md, color: C.textPrimary, lineHeight: Typography.size.md * 1.6 },
+
+    compHeader: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      paddingVertical: 4, marginBottom: 4,
+      borderBottomWidth: 1.5, borderBottomColor: C.border,
+    },
+    compHeaderCell: {
+      fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
+      color: C.textTertiary, textTransform: 'uppercase', letterSpacing: 0.4, flex: 1,
+    },
+    compRow: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingVertical: 6, paddingHorizontal: 4, borderRadius: 6,
+    },
+    compRowAlt: { backgroundColor: C.bgCardAlt },
+    compName:   { flex: 1, fontSize: Typography.size.body, color: C.textPrimary },
+    compAmount: { fontSize: Typography.size.body, fontWeight: Typography.weight.semibold, color: C.blue, marginLeft: Spacing.sm },
+
+    warnChips:    { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: 2 },
+    warnChip:     { backgroundColor: '#FFF3CD', borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: 5, borderWidth: 1, borderColor: '#FBBF24' },
+    warnChipText: { fontSize: Typography.size.body, color: '#92400E', fontWeight: Typography.weight.semibold },
+
+    conflictCard: {
+      backgroundColor: C.bgCard, borderRadius: Radius.xl, padding: Spacing.lg,
+      marginBottom: Spacing.md, borderWidth: 1.5, borderColor: C.danger, ...Shadow.card,
+    },
+    conflictTitle: { fontSize: Typography.size.base, fontWeight: Typography.weight.extrabold, color: C.dangerDark, marginBottom: 4 },
+    conflictSub:   { fontSize: Typography.size.body, color: C.textSecondary, marginBottom: Spacing.md },
+    conflictRow: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: C.dangerLight,
+    },
+    conflictMedName: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: C.dangerDark },
+    conflictMedIngr: { fontSize: Typography.size.xs, color: C.textSecondary, marginTop: 2 },
+    conflictArrow:   { fontSize: 22, color: C.danger, fontWeight: Typography.weight.bold },
+
+    tagRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+    tag:     { backgroundColor: C.blueLight, borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: 4 },
+    tagText: { fontSize: Typography.size.xs, color: C.blue, fontWeight: Typography.weight.semibold },
+
+    actionGrid:          { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs, marginBottom: Spacing.md },
+    interactionLink:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, paddingVertical: Spacing.md },
+    interactionLinkText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.blue },
+  });
+}
+
 export function MedicineDetailScreen() {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
+  const route      = useRoute<Route>();
   const { medicineId, kitId } = route.params;
+  const C = useColors();
+  const s = useMemo(() => makeStyles(C), [C]);
 
-  const medicine  = useAppStore(s => s.getMedicine(medicineId));
-  const kit       = useAppStore(s => s.getKit(kitId));
-  const medicines = useAppStore(s => s.medicines);
-  const decrement = useAppStore(s => s.decrementQuantity);
-  const deleteMed = useAppStore(s => s.deleteMedicine);
+  const medicine  = useAppStore(st => st.getMedicine(medicineId));
+  const kit       = useAppStore(st => st.getKit(kitId));
+  const medicines = useAppStore(st => st.medicines);
+  const decrement = useAppStore(st => st.decrementQuantity);
+  const deleteMed = useAppStore(st => st.deleteMedicine);
 
   const expiryInfo = useExpiryLabel(medicine?.expirationDate ?? new Date().toISOString());
 
-  /** All medicines in the same kit that are incompatible with this one */
   const conflicts = useMemo(() => {
     if (!medicine) return [];
     return medicines.filter(
@@ -63,13 +142,13 @@ export function MedicineDetailScreen() {
   if (!medicine) {
     return (
       <SafeAreaView style={s.root}>
-        <Text style={{ padding: 20, color: Colors.textPrimary }}>Препарат не найден</Text>
+        <Text style={{ padding: 20, color: C.textPrimary }}>Препарат не найден</Text>
       </SafeAreaView>
     );
   }
 
   const status = getMedicineStatus(medicine);
-  const pct = medicine.totalQuantity > 0
+  const pct    = medicine.totalQuantity > 0
     ? Math.round((medicine.remainingQuantity / medicine.totalQuantity) * 100)
     : 0;
 
@@ -99,9 +178,7 @@ export function MedicineDetailScreen() {
             <Text style={s.heroForm}>
               {medicine.dosage ? `${medicine.dosage} · ` : ''}{FORM_LABELS[medicine.form] ?? medicine.form}
             </Text>
-            {medicine.manufacturer ? (
-              <Text style={s.heroManuf}>{medicine.manufacturer}</Text>
-            ) : null}
+            {medicine.manufacturer ? <Text style={s.heroManuf}>{medicine.manufacturer}</Text> : null}
             <StatusBadge status={status} style={{ alignSelf: 'flex-start', marginTop: 6 }} />
           </View>
         </View>
@@ -115,15 +192,15 @@ export function MedicineDetailScreen() {
           <View style={s.bar}>
             <View style={[s.barFill, {
               width: `${pct}%` as any,
-              backgroundColor: pct > 40 ? Colors.success : pct > 15 ? Colors.warning : Colors.danger,
+              backgroundColor: pct > 40 ? C.success : pct > 15 ? C.warning : C.danger,
             }]} />
           </View>
 
           <View style={[s.infoRow, { marginTop: Spacing.md }]}>
             <Text style={s.infoLabel}>Срок годности</Text>
             <Text style={[s.infoVal, expiryInfo.isExpired
-              ? { color: Colors.dangerDark }
-              : expiryInfo.daysLeft <= 30 ? { color: Colors.warningDark } : {}]}>
+              ? { color: C.dangerDark }
+              : expiryInfo.daysLeft <= 30 ? { color: C.warningDark } : {}]}>
               {expiryInfo.label}
             </Text>
           </View>
@@ -154,9 +231,7 @@ export function MedicineDetailScreen() {
         {conflicts.length > 0 ? (
           <View style={s.conflictCard}>
             <Text style={s.conflictTitle}>⚠️ Несовместимо с препаратами в аптечке</Text>
-            <Text style={s.conflictSub}>
-              Не принимайте одновременно с:
-            </Text>
+            <Text style={s.conflictSub}>Не принимайте одновременно с:</Text>
             {conflicts.map(m => (
               <TouchableOpacity
                 key={m.id}
@@ -167,17 +242,15 @@ export function MedicineDetailScreen() {
                 <MedicineIcon form={m.form} size={32} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.conflictMedName}>{m.name}</Text>
-                  {m.activeIngredient ? (
-                    <Text style={s.conflictMedIngr}>{m.activeIngredient}</Text>
-                  ) : null}
+                  {m.activeIngredient ? <Text style={s.conflictMedIngr}>{m.activeIngredient}</Text> : null}
                 </View>
-                <Text style={s.conflictArrow}>›</Text>
+                <Icon name="chevron-right" size={22} color={C.danger} />
               </TouchableOpacity>
             ))}
           </View>
         ) : null}
 
-        {/* ── Composition / Ingredient table ── */}
+        {/* ── Composition ── */}
         {medicine.composition && medicine.composition.length > 0 ? (
           <View style={s.card}>
             <Text style={s.secTitle}>Состав</Text>
@@ -194,7 +267,6 @@ export function MedicineDetailScreen() {
           </View>
         ) : null}
 
-        {/* ── Description ── */}
         {medicine.description ? (
           <View style={s.card}>
             <Text style={s.secTitle}>Для чего</Text>
@@ -202,7 +274,6 @@ export function MedicineDetailScreen() {
           </View>
         ) : null}
 
-        {/* ── Usage notes ── */}
         {medicine.usageNotes ? (
           <View style={s.card}>
             <Text style={s.secTitle}>Когда применять</Text>
@@ -210,7 +281,6 @@ export function MedicineDetailScreen() {
           </View>
         ) : null}
 
-        {/* ── Warnings / contraindications ── */}
         {medicine.warnings && medicine.warnings.length > 0 ? (
           <View style={s.card}>
             <Text style={s.secTitle}>⚠️ Противопоказания</Text>
@@ -224,16 +294,10 @@ export function MedicineDetailScreen() {
           </View>
         ) : null}
 
-        {/* ── General incompatibility list ── */}
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
-          <WarningBanner
-            emoji="🚫"
-            title="Несовместимые вещества:"
-            body={medicine.incompatibleWith.join(', ')}
-          />
+          <WarningBanner emoji="🚫" title="Несовместимые вещества:" body={medicine.incompatibleWith.join(', ')} />
         ) : null}
 
-        {/* ── Storage ── */}
         {medicine.storageNotes ? (
           <View style={s.card}>
             <Text style={s.secTitle}>🌡 Хранение</Text>
@@ -241,7 +305,6 @@ export function MedicineDetailScreen() {
           </View>
         ) : null}
 
-        {/* ── Tags ── */}
         {medicine.tags && medicine.tags.length > 0 ? (
           <View style={s.tagRow}>
             {medicine.tags.map(tag => (
@@ -254,16 +317,14 @@ export function MedicineDetailScreen() {
 
         {/* ── Actions ── */}
         <View style={s.actionGrid}>
-          <ActionBtn emoji="✏️" label="Изменить" onPress={() => navigation.navigate('ManualEntry', { kitId, medicineId })} />
-          <ActionBtn emoji="📦" label="Кол-во" onPress={handleDecrement} />
-          <ActionBtn emoji="🔔" label="Напомни" onPress={() => {
-            // Navigate cross-stack to CreateReminder in NotificationsTab
+          <ActionBtn label="Изменить" icon="pencil"           onPress={() => navigation.navigate('ManualEntry', { kitId, medicineId })} />
+          <ActionBtn label="Кол-во"  icon="package-variant"  onPress={handleDecrement} />
+          <ActionBtn label="Напомни" icon="bell"             primary onPress={() => {
             (navigation as any).navigate('NotificationsTab', {
-              screen: 'CreateReminder',
-              params: { kitId, medicineId },
+              screen: 'CreateReminder', params: { kitId, medicineId },
             });
-          }} primary />
-          <ActionBtn emoji="🗑️" label="Удалить" onPress={handleDelete} danger />
+          }} />
+          <ActionBtn label="Удалить" icon="delete"           danger onPress={handleDelete} />
         </View>
 
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
@@ -271,7 +332,9 @@ export function MedicineDetailScreen() {
             style={s.interactionLink}
             onPress={() => navigation.navigate('MedicineInteraction', { medicineId })}
           >
-            <Text style={s.interactionLinkText}>🔬 Подробнее о совместимости →</Text>
+            <Icon name="flask-outline" size={16} color={C.blue} />
+            <Text style={s.interactionLinkText}>Подробнее о совместимости</Text>
+            <Icon name="arrow-right" size={16} color={C.blue} />
           </TouchableOpacity>
         ) : null}
 
@@ -280,109 +343,21 @@ export function MedicineDetailScreen() {
   );
 }
 
-function ActionBtn({ emoji, label, onPress, primary, danger }: {
-  emoji: string; label: string; onPress: () => void; primary?: boolean; danger?: boolean;
+// ── ActionBtn ─────────────────────────────────────────────────────────────────
+
+function ActionBtn({ icon, label, onPress, primary, danger }: {
+  icon: string; label: string; onPress: () => void; primary?: boolean; danger?: boolean;
 }) {
-  const bg = primary ? Colors.blue : danger ? Colors.dangerLight : Colors.bgCardAlt;
-  const tc = primary ? Colors.white : danger ? Colors.dangerDark : Colors.blue;
+  const C  = useColors();
+  const bg = primary ? C.blue : danger ? C.dangerLight : C.bgCardAlt;
+  const tc = primary ? C.white : danger ? C.dangerDark  : C.blue;
   return (
-    <TouchableOpacity style={[ab.btn, { backgroundColor: bg }]} onPress={onPress} activeOpacity={0.8}>
-      <Text style={{ fontSize: 20 }}>{emoji}</Text>
-      <Text style={[ab.label, { color: tc }]}>{label}</Text>
+    <TouchableOpacity
+      style={{ flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: bg }}
+      onPress={onPress} activeOpacity={0.8}
+    >
+      <Icon name={icon} size={22} color={tc} />
+      <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: tc }}>{label}</Text>
     </TouchableOpacity>
   );
 }
-const ab = StyleSheet.create({
-  btn: { flex: 1, padding: Spacing.md, borderRadius: Radius.md, alignItems: 'center', gap: 4 },
-  label: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },
-});
-
-const s = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
-
-  hero: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,
-    backgroundColor: Colors.blueLight, borderRadius: Radius.xl,
-    padding: Spacing.lg, marginBottom: Spacing.md,
-  },
-  heroName:  { fontSize: Typography.size.hero, fontWeight: Typography.weight.extrabold, color: Colors.blueDark },
-  heroForm:  { fontSize: Typography.size.body, color: Colors.blue, marginTop: 2 },
-  heroManuf: { fontSize: Typography.size.xs, color: Colors.textSecondary, marginTop: 2, fontStyle: 'italic' },
-
-  card: { backgroundColor: Colors.bgCard, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md, ...Shadow.card },
-
-  infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-  },
-  infoLabel: { fontSize: Typography.size.body, color: Colors.textSecondary, fontWeight: Typography.weight.semibold },
-  infoVal:   { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary },
-
-  bar:     { height: 6, borderRadius: Radius.pill, backgroundColor: Colors.bgCardAlt, marginTop: Spacing.sm, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: Radius.pill },
-
-  secTitle: {
-    fontSize: Typography.size.body, fontWeight: Typography.weight.bold,
-    color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm,
-  },
-  bodyText: { fontSize: Typography.size.md, color: Colors.textPrimary, lineHeight: Typography.size.md * 1.6 },
-
-  /* Composition table */
-  compHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: 4, marginBottom: 4,
-    borderBottomWidth: 1.5, borderBottomColor: Colors.border,
-  },
-  compHeaderCell: {
-    fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
-    color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.4, flex: 1,
-  },
-  compRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 6, paddingHorizontal: 4, borderRadius: 6,
-  },
-  compRowAlt: { backgroundColor: Colors.bgCardAlt },
-  compName:   { flex: 1, fontSize: Typography.size.body, color: Colors.textPrimary },
-  compAmount: { fontSize: Typography.size.body, fontWeight: Typography.weight.semibold, color: Colors.blue, marginLeft: Spacing.sm },
-
-  /* Contraindication chips */
-  warnChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: 2 },
-  warnChip: {
-    backgroundColor: '#FFF3CD', borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#FBBF24',
-  },
-  warnChipText: { fontSize: Typography.size.body, color: '#92400E', fontWeight: Typography.weight.semibold },
-
-  /* Drug interaction conflicts */
-  conflictCard: {
-    backgroundColor: '#FFF5F5', borderRadius: Radius.xl, padding: Spacing.lg,
-    marginBottom: Spacing.md, borderWidth: 1.5, borderColor: Colors.danger,
-    ...Shadow.card,
-  },
-  conflictTitle: {
-    fontSize: Typography.size.base, fontWeight: Typography.weight.extrabold,
-    color: Colors.dangerDark, marginBottom: 4,
-  },
-  conflictSub: { fontSize: Typography.size.body, color: Colors.textSecondary, marginBottom: Spacing.md },
-  conflictRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: '#FFD6D6',
-  },
-  conflictMedName: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: Colors.dangerDark },
-  conflictMedIngr: { fontSize: Typography.size.xs, color: Colors.textSecondary, marginTop: 2 },
-  conflictArrow:   { fontSize: 22, color: Colors.danger, fontWeight: Typography.weight.bold },
-
-  /* Tags */
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
-  tag: {
-    backgroundColor: Colors.blueLight, borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md, paddingVertical: 4,
-  },
-  tagText: { fontSize: Typography.size.xs, color: Colors.blue, fontWeight: Typography.weight.semibold },
-
-  actionGrid: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs, marginBottom: Spacing.md },
-  interactionLink: { alignItems: 'center', paddingVertical: Spacing.md },
-  interactionLinkText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.blue },
-});

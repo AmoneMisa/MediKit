@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, TextInput, Alert,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppNotification, NotificationType, MedicineReminder, NotificationsStackParamList } from '../types';
@@ -70,8 +71,7 @@ function makeStyles(C: ColorPalette) {
       paddingHorizontal: Spacing.md, marginHorizontal: Spacing.lg,
       marginBottom: Spacing.sm, height: 42, gap: Spacing.sm,
     },
-    searchIcon:  { fontSize: 14, color: C.textTertiary },
-    searchInput: { flex: 1, fontSize: Typography.size.md, color: C.textPrimary },
+    searchInput: { flex: 1, fontSize: Typography.size.md, color: C.textPrimary, textAlignVertical: 'center' },
 
     list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
 
@@ -89,7 +89,7 @@ function makeStyles(C: ColorPalette) {
     notifSub:       { fontSize: Typography.size.body, color: C.textSecondary, marginTop: 3 },
     right:          { alignItems: 'flex-end', gap: 6, flexShrink: 0 },
     time:           { fontSize: Typography.size.xs, color: C.textTertiary },
-    dismiss:        { fontSize: 14, color: C.textTertiary },
+    dismiss:        { color: C.textTertiary },
 
     // Reminder card
     remCard: {
@@ -127,7 +127,6 @@ function makeStyles(C: ColorPalette) {
       width: 56, height: 56, borderRadius: 28,
       backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', ...Shadow.card,
     },
-    fabText: { fontSize: 28, color: C.white, lineHeight: 32 },
   });
 }
 
@@ -223,7 +222,7 @@ export function NotificationsScreen() {
         <View style={s.right}>
           <Text style={s.time}>{timeAgo(item.createdAt)}</Text>
           <TouchableOpacity onPress={() => dismiss(item.id)} hitSlop={8}>
-            <Text style={s.dismiss}>✕</Text>
+            <Icon name="close" size={16} color={C.textTertiary} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -274,21 +273,21 @@ export function NotificationsScreen() {
             onPress={() => navigation.navigate('CreateReminder', { reminderId: r.id })}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 16 }}>✏️</Text>
+            <Icon name="pencil" size={18} color={C.blue} />
           </TouchableOpacity>
           <TouchableOpacity
             style={s.actionBtn}
             onPress={() => updateRem(r.id, { isActive: !r.isActive })}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 16 }}>{r.isActive ? '⏸' : '▶️'}</Text>
+            <Icon name={r.isActive ? 'pause' : 'play'} size={18} color={C.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.actionBtn, s.deleteBtnBg]}
             onPress={() => handleDeleteReminder(r)}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 16 }}>🗑️</Text>
+            <Icon name="delete" size={18} color={C.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -334,7 +333,7 @@ export function NotificationsScreen() {
       {/* Search (alerts only) */}
       {tab === 'alerts' && (
         <View style={s.searchBox}>
-          <Text style={s.searchIcon}>🔍</Text>
+          <Icon name="magnify" size={16} color={C.textTertiary} />
           <TextInput
             style={s.searchInput}
             placeholder={t('search_ph')}
@@ -344,7 +343,7 @@ export function NotificationsScreen() {
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')}>
-              <Text style={s.dismiss}>✕</Text>
+              <Icon name="close" size={16} color={C.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -388,7 +387,7 @@ export function NotificationsScreen() {
           onPress={() => navigation.navigate('CreateReminder', {})}
           activeOpacity={0.85}
         >
-          <Text style={s.fabText}>＋</Text>
+          <Icon name="plus" size={30} color={C.white} />
         </TouchableOpacity>
       )}
     </SafeAreaView>

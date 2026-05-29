@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { KitsStackParamList, MedicineForm, CompositionItem } from '../types';
 import { useAppStore } from '../store';
-import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
+import { Spacing, Typography, Radius, Shadow } from '../theme';
+import type { ColorPalette } from '../theme';
+import { useColors } from '../context/ThemeContext';
 import DatePicker from 'react-native-date-picker';
+import { inferMedicineTags } from '../utils/medicineTags';
 
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'ManualEntry'>;
 
@@ -44,16 +48,16 @@ const MEDICINE_TAGS: { key: string; label: string; emoji: string }[] = [
 ];
 
 const CONTRAINDICATIONS: { key: string; label: string }[] = [
-  { key: 'Беременность', label: '🤰 Беременность' },
-  { key: 'Кормление грудью', label: '🤱 Кормление грудью' },
-  { key: 'Дети до 6 лет', label: '👶 Дети до 6 лет' },
-  { key: 'Дети до 12 лет', label: '🧒 Дети до 12 лет' },
-  { key: 'Дети до 18 лет', label: '🧑 Дети до 18 лет' },
-  { key: 'Нарушения функции почек', label: '🫘 Нарушения почек' },
-  { key: 'Нарушения функции печени', label: '🫁 Нарушения печени' },
-  { key: 'Не управлять авто', label: '🚗 Не за руль' },
-  { key: 'Алкоголь несовместим', label: '🍷 Без алкоголя' },
-  { key: 'Язвенная болезнь', label: '🔴 Язвенная болезнь' },
+  { key: 'Беременность',                label: '🤰 Беременность' },
+  { key: 'Кормление грудью',            label: '🤱 Кормление грудью' },
+  { key: 'Дети до 6 лет',              label: '👶 Дети до 6 лет' },
+  { key: 'Дети до 12 лет',             label: '🧒 Дети до 12 лет' },
+  { key: 'Дети до 18 лет',             label: '🧑 Дети до 18 лет' },
+  { key: 'Нарушения функции почек',    label: '🫘 Нарушения почек' },
+  { key: 'Нарушения функции печени',   label: '🫁 Нарушения печени' },
+  { key: 'Не управлять авто',          label: '🚗 Не за руль' },
+  { key: 'Алкоголь несовместим',       label: '🍷 Без алкоголя' },
+  { key: 'Язвенная болезнь',           label: '🔴 Язвенная болезнь' },
   { key: 'Только по назначению врача', label: '⚕️ По рецепту' },
 ];
 
@@ -68,12 +72,103 @@ function fromIso(s: string): Date {
   return new Date(y, m - 1, d);
 }
 
+function makeStyles(C: ColorPalette) {
+  return StyleSheet.create({
+    root:   { flex: 1, backgroundColor: C.bgPage },
+    scroll: { padding: Spacing.lg, paddingBottom: 48 },
+    sectionTitle: {
+      fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
+      color: C.textTertiary, textTransform: 'uppercase',
+      letterSpacing: 0.5, marginBottom: Spacing.sm, marginTop: Spacing.md,
+    },
+    card: {
+      backgroundColor: C.bgCard, borderRadius: Radius.xl,
+      padding: Spacing.lg, marginBottom: Spacing.xs, ...Shadow.card,
+    },
+    row: { flexDirection: 'row', alignItems: 'flex-start' },
+
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xs },
+    chip: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: Spacing.md, paddingVertical: 8,
+      borderRadius: Radius.pill, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.bgCard,
+    },
+    chipActive:         { backgroundColor: C.blue,         borderColor: C.blue },
+    chipTagActive:      { backgroundColor: C.successLight, borderColor: C.success },
+    chipWarnActive:     { backgroundColor: C.dangerLight,  borderColor: C.danger },
+    chipText:           { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.textSecondary },
+    chipTextActive:     { color: C.white },
+    chipTagTextActive:  { color: C.successDark },
+    chipWarnTextActive: { color: C.dangerDark },
+
+    compHeader: { flexDirection: 'row', marginBottom: 4 },
+    compColLabel: {
+      fontSize: Typography.size.xs, color: C.textTertiary,
+      fontWeight: Typography.weight.bold, textTransform: 'uppercase',
+    },
+    compRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+    compInput: {
+      backgroundColor: C.bgCardAlt, borderRadius: Radius.sm,
+      borderWidth: 1.5, borderColor: C.border,
+      paddingHorizontal: Spacing.sm, height: 40,
+      fontSize: Typography.size.body, color: C.textPrimary,
+      textAlignVertical: 'center',
+    },
+    compDelete: { width: 32, alignItems: 'center', justifyContent: 'center' },
+    addCompBtn: {
+      borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.blue,
+      borderRadius: Radius.md, paddingVertical: Spacing.sm,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    },
+    addCompBtnText: { fontSize: Typography.size.body, color: C.blue, fontWeight: Typography.weight.bold },
+
+    dateLabel: {
+      fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
+      color: C.textSecondary, textTransform: 'uppercase',
+      letterSpacing: 0.4, marginBottom: Spacing.xs,
+    },
+    dateSep: { height: 1, backgroundColor: C.borderLight, marginVertical: Spacing.sm },
+    datePicker: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: C.bgCardAlt, borderRadius: Radius.sm,
+      borderWidth: 1.5, borderColor: C.border, paddingHorizontal: Spacing.md, height: 44,
+    },
+    datePickerText: { fontSize: Typography.size.md, color: C.textPrimary, fontWeight: Typography.weight.semibold },
+
+    noKitText: { color: C.textSecondary, fontSize: Typography.size.body },
+
+    saveBtn: {
+      backgroundColor: C.blue, borderRadius: Radius.xl,
+      padding: Spacing.lg, alignItems: 'center', marginTop: Spacing.md, ...Shadow.card,
+    },
+    saveBtnText: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: C.white },
+
+    // Field sub-styles
+    fieldWrap:  { marginBottom: Spacing.md },
+    fieldLabel: {
+      fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
+      color: C.textSecondary, marginBottom: 5,
+      textTransform: 'uppercase', letterSpacing: 0.4,
+    },
+    fieldInput: {
+      backgroundColor: C.bgCardAlt, borderRadius: Radius.sm,
+      borderWidth: 1.5, borderColor: C.border,
+      paddingHorizontal: Spacing.md,
+      fontSize: Typography.size.md, color: C.textPrimary,
+      height: 44, textAlignVertical: 'center',
+    },
+    fieldInputMulti: { height: 80, textAlignVertical: 'top', paddingTop: Spacing.sm },
+  });
+}
+
 export function ManualEntryScreen() {
   const navigation  = useNavigation<Nav>();
   const route       = useRoute<any>();
   const kitId: string | undefined      = route.params?.kitId;
   const medicineId: string | undefined = route.params?.medicineId;
   const prefill                        = route.params?.prefill;
+  const C  = useColors();
+  const st = useMemo(() => makeStyles(C), [C]);
 
   const addMedicine    = useAppStore(s => s.addMedicine);
   const updateMedicine = useAppStore(s => s.updateMedicine);
@@ -99,6 +194,19 @@ export function ManualEntryScreen() {
   const [warnings,         setWarnings]         = useState<string[]>([]);
   const [selectedKitId,    setSelectedKitId]    = useState(kitId ?? kits[0]?.id ?? '');
   const [tags,             setTags]             = useState<string[]>([]);
+  const [autoTagsDismissed, setAutoTagsDismissed] = useState(false);
+
+  // Auto-tag: infer tags from name + active ingredient after a short delay
+  const suggestedTags = useMemo(() => {
+    if (existingMed || prefill || autoTagsDismissed) return [];
+    const inferred = inferMedicineTags(name, activeIngredient);
+    return inferred.filter(t => !tags.includes(t));
+  }, [name, activeIngredient, tags, existingMed, prefill, autoTagsDismissed]);
+
+  function applyAutoTags() {
+    setTags(prev => [...new Set([...prev, ...suggestedTags])]);
+    setAutoTagsDismissed(true);
+  }
 
   useEffect(() => {
     if (existingMed) {
@@ -132,32 +240,22 @@ export function ManualEntryScreen() {
   function toggleTag(key: string) {
     setTags(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   }
-
   function toggleWarning(key: string) {
     setWarnings(prev => prev.includes(key) ? prev.filter(w => w !== key) : [...prev, key]);
   }
-
   function addCompositionRow() {
     setComposition(prev => [...prev, { name: '', amount: '' }]);
   }
-
   function updateComposition(index: number, field: 'name' | 'amount', value: string) {
     setComposition(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   }
-
   function removeComposition(index: number) {
     setComposition(prev => prev.filter((_, i) => i !== index));
   }
 
   function handleSave() {
-    if (!name.trim()) {
-      Alert.alert('Укажите название', 'Название препарата обязательно.');
-      return;
-    }
-    if (!selectedKitId) {
-      Alert.alert('Выберите аптечку', 'Сначала создайте аптечку на вкладке «Аптечки».');
-      return;
-    }
+    if (!name.trim()) { Alert.alert('Укажите название', 'Название препарата обязательно.'); return; }
+    if (!selectedKitId) { Alert.alert('Выберите аптечку', 'Сначала создайте аптечку на вкладке «Аптечки».'); return; }
 
     const total     = parseInt(totalQty, 10) || 1;
     const remaining = parseInt(remainingQty, 10) || total;
@@ -199,23 +297,22 @@ export function ManualEntryScreen() {
         <ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled">
 
           {/* ── Basic info ── */}
-          <SectionTitle>Основное</SectionTitle>
+          <Text style={st.sectionTitle}>Основное</Text>
           <View style={st.card}>
-            <Field label="Название *" placeholder="Название препарата" value={name} onChangeText={setName} />
-            <Field label="Производитель" placeholder="Bayer, Pfizer, Борщагівський ХФЗ…" value={manufacturer} onChangeText={setManufacturer} />
-            <Field label="Действующее вещество" placeholder="МНН / активный компонент" value={activeIngredient} onChangeText={setActiveIngredient} />
-            <Field label="Дозировка" placeholder="500 мг, 0.1%, 10000 ЕД…" value={dosage} onChangeText={setDosage} />
+            <Field label="Название *"             placeholder="Название препарата"            value={name}             onChangeText={setName}             styles={st} colors={C} />
+            <Field label="Производитель"          placeholder="Bayer, Pfizer…"               value={manufacturer}     onChangeText={setManufacturer}     styles={st} colors={C} />
+            <Field label="Действующее вещество"   placeholder="МНН / активный компонент"     value={activeIngredient} onChangeText={setActiveIngredient} styles={st} colors={C} />
+            <Field label="Дозировка"              placeholder="500 мг, 0.1%, 10000 ЕД…"     value={dosage}           onChangeText={setDosage}           styles={st} colors={C} />
           </View>
 
           {/* ── Form type ── */}
-          <SectionTitle>Форма выпуска</SectionTitle>
+          <Text style={st.sectionTitle}>Форма выпуска</Text>
           <View style={st.chipRow}>
             {FORMS.map(f => (
               <TouchableOpacity
                 key={f.value}
                 style={[st.chip, form === f.value && st.chipActive]}
-                onPress={() => setForm(f.value)}
-                activeOpacity={0.8}
+                onPress={() => setForm(f.value)} activeOpacity={0.8}
               >
                 <Text style={{ fontSize: 15 }}>{f.emoji}</Text>
                 <Text style={[st.chipText, form === f.value && st.chipTextActive]}>{f.label}</Text>
@@ -224,7 +321,7 @@ export function ManualEntryScreen() {
           </View>
 
           {/* ── Composition ── */}
-          <SectionTitle>Состав (компоненты)</SectionTitle>
+          <Text style={st.sectionTitle}>Состав (компоненты)</Text>
           <View style={st.card}>
             {composition.length > 0 && (
               <View style={st.compHeader}>
@@ -238,36 +335,61 @@ export function ManualEntryScreen() {
                 <TextInput
                   style={[st.compInput, { flex: 1 }]}
                   placeholder="Нимесулид, Магний…"
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={C.textTertiary}
                   value={item.name}
                   onChangeText={v => updateComposition(i, 'name', v)}
                 />
                 <TextInput
                   style={[st.compInput, { width: 100 }]}
                   placeholder="100 мг"
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={C.textTertiary}
                   value={item.amount}
                   onChangeText={v => updateComposition(i, 'amount', v)}
                 />
                 <TouchableOpacity onPress={() => removeComposition(i)} style={st.compDelete}>
-                  <Text style={{ color: Colors.danger, fontSize: 16 }}>✕</Text>
+                  <Icon name="close" size={18} color={C.danger} />
                 </TouchableOpacity>
               </View>
             ))}
             <TouchableOpacity style={st.addCompBtn} onPress={addCompositionRow} activeOpacity={0.8}>
-              <Text style={st.addCompBtnText}>＋ Добавить компонент</Text>
+              <Icon name="plus" size={14} color={C.blue} />
+              <Text style={st.addCompBtnText}>Добавить компонент</Text>
             </TouchableOpacity>
           </View>
 
+          {/* ── Auto-tag suggestion ── */}
+          {suggestedTags.length > 0 && (
+            <View style={{
+              backgroundColor: C.blueLight, borderRadius: Radius.md,
+              padding: Spacing.md, marginBottom: Spacing.sm, marginTop: Spacing.xs,
+              flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+            }}>
+              <Icon name="auto-fix" size={18} color={C.blueDark} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.blueDark }}>
+                  Авто-теги: {suggestedTags.join(', ')}
+                </Text>
+                <Text style={{ fontSize: Typography.size.xs, color: C.blueDark, opacity: 0.7, marginTop: 2 }}>
+                  Мы определили категории по названию
+                </Text>
+              </View>
+              <TouchableOpacity onPress={applyAutoTags} style={{ backgroundColor: C.blue, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 6 }}>
+                <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.white }}>Применить</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setAutoTagsDismissed(true)}>
+                <Icon name="close" size={16} color={C.blueDark} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* ── Tags ── */}
-          <SectionTitle>Применяется при</SectionTitle>
+          <Text style={st.sectionTitle}>Применяется при</Text>
           <View style={st.chipRow}>
             {MEDICINE_TAGS.map(t => (
               <TouchableOpacity
                 key={t.key}
                 style={[st.chip, tags.includes(t.key) && st.chipTagActive]}
-                onPress={() => toggleTag(t.key)}
-                activeOpacity={0.8}
+                onPress={() => toggleTag(t.key)} activeOpacity={0.8}
               >
                 <Text style={{ fontSize: 14 }}>{t.emoji}</Text>
                 <Text style={[st.chipText, tags.includes(t.key) && st.chipTagTextActive]}>{t.label}</Text>
@@ -276,14 +398,13 @@ export function ManualEntryScreen() {
           </View>
 
           {/* ── Contraindications ── */}
-          <SectionTitle>Противопоказания</SectionTitle>
+          <Text style={st.sectionTitle}>Противопоказания</Text>
           <View style={st.chipRow}>
             {CONTRAINDICATIONS.map(c => (
               <TouchableOpacity
                 key={c.key}
                 style={[st.chip, warnings.includes(c.key) && st.chipWarnActive]}
-                onPress={() => toggleWarning(c.key)}
-                activeOpacity={0.8}
+                onPress={() => toggleWarning(c.key)} activeOpacity={0.8}
               >
                 <Text style={[st.chipText, warnings.includes(c.key) && st.chipWarnTextActive]}>{c.label}</Text>
               </TouchableOpacity>
@@ -291,52 +412,51 @@ export function ManualEntryScreen() {
           </View>
 
           {/* ── Quantity ── */}
-          <SectionTitle>Количество</SectionTitle>
+          <Text style={st.sectionTitle}>Количество</Text>
           <View style={st.card}>
             <View style={st.row}>
               <View style={{ flex: 1 }}>
-                <Field label="Всего в упаковке" placeholder="20" value={totalQty} onChangeText={setTotalQty} keyboardType="number-pad" />
+                <Field label="Всего в упаковке" placeholder="20" value={totalQty}     onChangeText={setTotalQty}     keyboardType="number-pad" styles={st} colors={C} />
               </View>
               <View style={{ width: Spacing.md }} />
               <View style={{ flex: 1 }}>
-                <Field label="Осталось" placeholder="20" value={remainingQty} onChangeText={setRemainingQty} keyboardType="number-pad" />
+                <Field label="Осталось"         placeholder="20" value={remainingQty} onChangeText={setRemainingQty} keyboardType="number-pad" styles={st} colors={C} />
               </View>
             </View>
           </View>
 
           {/* ── Dates ── */}
-          <SectionTitle>Даты</SectionTitle>
+          <Text style={st.sectionTitle}>Даты</Text>
           <View style={st.card}>
             <Text style={st.dateLabel}>Куплено / открыто</Text>
             <TouchableOpacity style={st.datePicker} onPress={() => setStartOpen(true)} activeOpacity={0.8}>
               <Text style={st.datePickerText}>{fmt(startDate)}</Text>
-              <Text style={st.datePickerIcon}>📅</Text>
+              <Icon name="calendar" size={20} color={C.textSecondary} />
             </TouchableOpacity>
-            <View style={{ height: 1, backgroundColor: Colors.borderLight, marginVertical: Spacing.sm }} />
+            <View style={st.dateSep} />
             <Text style={st.dateLabel}>Срок годности *</Text>
             <TouchableOpacity style={st.datePicker} onPress={() => setExpiryOpen(true)} activeOpacity={0.8}>
               <Text style={st.datePickerText}>{fmt(expiryDate)}</Text>
-              <Text style={st.datePickerIcon}>📅</Text>
+              <Icon name="calendar" size={20} color={C.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* ── Notes ── */}
-          <SectionTitle>Заметки</SectionTitle>
+          <Text style={st.sectionTitle}>Заметки</Text>
           <View style={st.card}>
-            <Field label="Условия хранения и особые указания" placeholder="Хранить при t° до 25°C, в сухом месте…" value={notes} onChangeText={setNotes} multiline />
+            <Field label="Условия хранения и особые указания" placeholder="Хранить при t° до 25°C…" value={notes} onChangeText={setNotes} multiline styles={st} colors={C} />
           </View>
 
           {/* ── Kit selector ── */}
           {kits.length > 0 ? (
             <>
-              <SectionTitle>{isEditing ? 'Аптечка' : 'Добавить в аптечку'}</SectionTitle>
+              <Text style={st.sectionTitle}>{isEditing ? 'Аптечка' : 'Добавить в аптечку'}</Text>
               <View style={st.chipRow}>
                 {kits.map(k => (
                   <TouchableOpacity
                     key={k.id}
                     style={[st.chip, selectedKitId === k.id && st.chipActive]}
-                    onPress={() => setSelectedKitId(k.id)}
-                    activeOpacity={0.8}
+                    onPress={() => setSelectedKitId(k.id)} activeOpacity={0.8}
                   >
                     <Text style={{ fontSize: 15 }}>{k.icon}</Text>
                     <Text style={[st.chipText, selectedKitId === k.id && st.chipTextActive]}>{k.name}</Text>
@@ -346,16 +466,14 @@ export function ManualEntryScreen() {
             </>
           ) : (
             <View style={[st.card, { marginTop: Spacing.md }]}>
-              <Text style={{ color: Colors.textSecondary, fontSize: Typography.size.body }}>
-                Сначала создайте аптечку на вкладке «Аптечки»
-              </Text>
+              <Text style={st.noKitText}>Сначала создайте аптечку на вкладке «Аптечки»</Text>
             </View>
           )}
 
           {/* ── Save ── */}
           <TouchableOpacity style={st.saveBtn} onPress={handleSave} activeOpacity={0.85}>
             <Text style={st.saveBtnText}>
-              {isEditing ? '✏️ Сохранить изменения' : '💾 Сохранить препарат'}
+              {isEditing ? 'Сохранить изменения' : 'Сохранить препарат'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -373,23 +491,22 @@ export function ManualEntryScreen() {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={st.sectionTitle}>{children}</Text>;
-}
+// ── Field sub-component ────────────────────────────────────────────────────────
 
 function Field({
-  label, placeholder, value, onChangeText, keyboardType, multiline,
+  label, placeholder, value, onChangeText, keyboardType, multiline, styles: st, colors: C,
 }: {
   label: string; placeholder: string; value: string;
   onChangeText: (t: string) => void; keyboardType?: any; multiline?: boolean;
+  styles: ReturnType<typeof makeStyles>; colors: ColorPalette;
 }) {
   return (
-    <View style={fi.wrap}>
-      <Text style={fi.label}>{label}</Text>
+    <View style={st.fieldWrap}>
+      <Text style={st.fieldLabel}>{label}</Text>
       <TextInput
-        style={[fi.input, multiline && fi.inputMulti]}
+        style={[st.fieldInput, multiline && st.fieldInputMulti]}
         placeholder={placeholder}
-        placeholderTextColor={Colors.textTertiary}
+        placeholderTextColor={C.textTertiary}
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType ?? 'default'}
@@ -399,84 +516,3 @@ function Field({
     </View>
   );
 }
-
-const fi = StyleSheet.create({
-  wrap:  { marginBottom: Spacing.md },
-  label: {
-    fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
-    color: Colors.textSecondary, marginBottom: 5,
-    textTransform: 'uppercase', letterSpacing: 0.4,
-  },
-  input: {
-    backgroundColor: Colors.bgCardAlt, borderRadius: Radius.sm,
-    borderWidth: 1.5, borderColor: Colors.border,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    fontSize: Typography.size.md, color: Colors.textPrimary, height: 44,
-  },
-  inputMulti: { height: 80, textAlignVertical: 'top', paddingTop: Spacing.sm },
-});
-
-const st = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 48 },
-  sectionTitle: {
-    fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
-    color: Colors.textTertiary, textTransform: 'uppercase',
-    letterSpacing: 0.5, marginBottom: Spacing.sm, marginTop: Spacing.md,
-  },
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
-    padding: Spacing.lg, marginBottom: Spacing.xs, ...Shadow.card,
-  },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
-
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xs },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: Spacing.md, paddingVertical: 8,
-    borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.bgCard,
-  },
-  chipActive:         { backgroundColor: Colors.blue,         borderColor: Colors.blue },
-  chipTagActive:      { backgroundColor: Colors.successLight, borderColor: Colors.success },
-  chipWarnActive:     { backgroundColor: Colors.dangerLight,  borderColor: Colors.danger },
-  chipText:           { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.textSecondary },
-  chipTextActive:     { color: Colors.white },
-  chipTagTextActive:  { color: Colors.successDark },
-  chipWarnTextActive: { color: Colors.dangerDark },
-
-  compHeader: { flexDirection: 'row', marginBottom: 4 },
-  compColLabel: { fontSize: Typography.size.xs, color: Colors.textTertiary, fontWeight: Typography.weight.bold, textTransform: 'uppercase' },
-  compRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  compInput: {
-    backgroundColor: Colors.bgCardAlt, borderRadius: Radius.sm,
-    borderWidth: 1.5, borderColor: Colors.border,
-    paddingHorizontal: Spacing.sm, height: 40,
-    fontSize: Typography.size.body, color: Colors.textPrimary,
-  },
-  compDelete: { width: 32, alignItems: 'center', justifyContent: 'center' },
-  addCompBtn: {
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: Colors.blue,
-    borderRadius: Radius.md, paddingVertical: Spacing.sm, alignItems: 'center',
-  },
-  addCompBtnText: { fontSize: Typography.size.body, color: Colors.blue, fontWeight: Typography.weight.bold },
-
-  dateLabel: {
-    fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
-    color: Colors.textSecondary, textTransform: 'uppercase',
-    letterSpacing: 0.4, marginBottom: Spacing.xs,
-  },
-  datePicker: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.bgCardAlt, borderRadius: Radius.sm,
-    borderWidth: 1.5, borderColor: Colors.border, paddingHorizontal: Spacing.md, height: 44,
-  },
-  datePickerText: { fontSize: Typography.size.md, color: Colors.textPrimary, fontWeight: Typography.weight.semibold },
-  datePickerIcon: { fontSize: 18 },
-
-  saveBtn: {
-    backgroundColor: Colors.blue, borderRadius: Radius.xl,
-    padding: Spacing.lg, alignItems: 'center', marginTop: Spacing.md, ...Shadow.card,
-  },
-  saveBtnText: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.white },
-});

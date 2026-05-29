@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
+import { Spacing, Typography, Radius, Shadow } from '../theme';
+import type { ColorPalette } from '../theme';
+import { useColors } from '../context/ThemeContext';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { KitActivityEvent } from '../types';
@@ -18,13 +20,37 @@ const EVENT_CONFIG: Record<KitActivityEvent['type'], { emoji: string; label: (e:
   share_created:    { emoji: '↗',  label: () => 'Создал(а) ссылку для приглашения' },
 };
 
+function makeStyles(C: ColorPalette) {
+  return StyleSheet.create({
+    root:   { flex: 1, backgroundColor: C.bgPage },
+    list:   { padding: Spacing.lg, paddingBottom: 40 },
+    row:    { flexDirection: 'row', marginBottom: Spacing.md },
+    timelineLeft: { alignItems: 'center', marginRight: Spacing.md, width: 40 },
+    emojiCircle: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: C.bgCard, alignItems: 'center', justifyContent: 'center', ...Shadow.sm,
+    },
+    line:    { flex: 1, width: 2, backgroundColor: C.borderLight, marginTop: 4 },
+    content: {
+      flex: 1, backgroundColor: C.bgCard, borderRadius: Radius.lg,
+      padding: Spacing.md, ...Shadow.sm,
+    },
+    actor:   { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.textPrimary },
+    action:  { fontSize: Typography.size.body, color: C.textSecondary, marginTop: 2 },
+    time:    { fontSize: Typography.size.xs, color: C.textTertiary, marginTop: 6 },
+    emptyTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary },
+  });
+}
+
 export function ActivityHistoryScreen() {
-  const route  = useRoute<any>();
-  const kitId: string = route.params?.kitId;
+  const route = useRoute<any>();
+  const _kitId: string = route.params?.kitId;
   const events: KitActivityEvent[] = [];
+  const C = useColors();
+  const s = useMemo(() => makeStyles(C), [C]);
 
   function renderItem({ item }: { item: KitActivityEvent }) {
-    const cfg    = EVENT_CONFIG[item.type];
+    const cfg     = EVENT_CONFIG[item.type];
     const timeAgo = formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true, locale: ru });
 
     return (
@@ -35,7 +61,6 @@ export function ActivityHistoryScreen() {
           </View>
           <View style={s.line} />
         </View>
-
         <View style={s.content}>
           <Text style={s.actor}>{item.userName}</Text>
           <Text style={s.action}>{cfg.label(item)}</Text>
@@ -54,9 +79,7 @@ export function ActivityHistoryScreen() {
         ListEmptyComponent={
           <View style={{ alignItems: 'center', padding: 40 }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.textPrimary }}>
-              Нет истории изменений
-            </Text>
+            <Text style={s.emptyTitle}>Нет истории изменений</Text>
           </View>
         }
         renderItem={renderItem}
@@ -64,23 +87,3 @@ export function ActivityHistoryScreen() {
     </SafeAreaView>
   );
 }
-
-const s = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: Colors.bgPage },
-  list:   { padding: Spacing.lg, paddingBottom: 40 },
-  row:    { flexDirection: 'row', marginBottom: Spacing.md },
-  timelineLeft: { alignItems: 'center', marginRight: Spacing.md, width: 40 },
-  emojiCircle: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  line: { flex: 1, width: 2, backgroundColor: Colors.borderLight, marginTop: 4 },
-  content: {
-    flex: 1, backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    padding: Spacing.md, ...Shadow.sm,
-  },
-  actor:  { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.textPrimary },
-  action: { fontSize: Typography.size.body, color: Colors.textSecondary, marginTop: 2 },
-  time:   { fontSize: Typography.size.xs, color: Colors.textTertiary, marginTop: 6 },
-});

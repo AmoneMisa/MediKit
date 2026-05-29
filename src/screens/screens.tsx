@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, TextInput, Switch, Alert, Share, Clipboard,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppStore, getMedicineStatus } from '../store';
 import { useAllMedicinesSortedByExpiry, useExpiryLabel } from '../hooks';
@@ -371,9 +372,9 @@ function makeShareKitStyles(C: ColorPalette) {
       borderWidth: 1.5, borderColor: C.border,
       paddingHorizontal: Spacing.md, height: 44,
       fontSize: Typography.size.md, color: C.textPrimary,
+      textAlignVertical: 'center',
     },
-    nickSendBtn:     { width: 44, height: 44, borderRadius: Radius.md, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center' },
-    nickSendBtnText: { fontSize: Typography.size.xl, color: C.white, fontWeight: Typography.weight.bold },
+    nickSendBtn: { width: 44, height: 44, borderRadius: Radius.md, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center' },
 
     suggestions:  { marginTop: Spacing.sm, borderRadius: Radius.md, overflow: 'hidden' },
     suggRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: C.borderLight },
@@ -492,7 +493,7 @@ export function ShareKitScreen() {
               autoCorrect={false}
             />
             <TouchableOpacity style={sk.nickSendBtn} onPress={handleInviteByNick} activeOpacity={0.85}>
-              <Text style={sk.nickSendBtnText}>→</Text>
+              <Icon name="send" size={20} color={C.white} />
             </TouchableOpacity>
           </View>
           {nickInput.length >= 1 && (() => {
@@ -792,7 +793,8 @@ function makeProfileStyles(C: ColorPalette) {
     input:   {
       backgroundColor: C.bgCard, borderRadius: Radius.xl, borderWidth: 1.5,
       borderColor: C.border, paddingHorizontal: Spacing.lg, height: 48,
-      fontSize: Typography.size.md, color: C.textPrimary, marginBottom: Spacing.xs, ...Shadow.sm,
+      fontSize: Typography.size.md, color: C.textPrimary, marginBottom: Spacing.xs,
+      textAlignVertical: 'center', ...Shadow.sm,
     },
     saveBtn: {
       backgroundColor: C.blue, borderRadius: Radius.xl, padding: Spacing.lg,
@@ -851,7 +853,7 @@ export function ProfileScreen() {
           <Text style={ps.label}>E-mail</Text>
           <TextInput style={ps.input} placeholder="email@example.com" placeholderTextColor={C.textTertiary} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
           <TouchableOpacity style={ps.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={ps.saveBtnText}>💾 Сохранить</Text>
+            <Text style={ps.saveBtnText}>Сохранить</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{ alignItems: 'center', padding: Spacing.md }} onPress={() => setEditing(false)}>
             <Text style={{ fontSize: Typography.size.base, color: C.textSecondary }}>Отмена</Text>
@@ -877,12 +879,14 @@ export function ProfileScreen() {
             <Text style={{ fontSize: Typography.size.body, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{nickDisplay}</Text>
             {user.email ? <Text style={{ fontSize: Typography.size.body, color: 'rgba(255,255,255,0.6)', marginTop: 1 }}>{user.email}</Text> : null}
           </View>
-          <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)' }}>✏️</Text>
+          <Icon name="pencil" size={16} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
 
         {[
           { emoji: '🏠', label: `Мои аптечки (${kits.length})`, onPress: () => {} },
           { emoji: '✏️', label: 'Редактировать профиль', onPress: () => setEditing(true) },
+          { emoji: '👥', label: 'Контакты', onPress: () => navigation.navigate('Persons') },
+          { emoji: '📅', label: 'Сроки годности', onPress: () => navigation.navigate('Expiry') },
           { emoji: '⚙️', label: 'Настройки', onPress: () => navigation.navigate('Settings') },
           { emoji: '❓', label: 'Помощь', onPress: () => {} },
         ].map((item, i, arr) => (
@@ -890,7 +894,7 @@ export function ProfileScreen() {
             <TouchableOpacity style={ps.row} onPress={item.onPress} activeOpacity={0.8}>
               <Text style={{ fontSize: 18, width: 26, textAlign: 'center' }}>{item.emoji}</Text>
               <Text style={ps.rowText}>{item.label}</Text>
-              <Text style={{ fontSize: 18, color: C.textTertiary }}>›</Text>
+              <Icon name="chevron-right" size={20} color={C.textTertiary} />
             </TouchableOpacity>
             {i < arr.length - 1 && <View style={ps.divider} />}
           </View>

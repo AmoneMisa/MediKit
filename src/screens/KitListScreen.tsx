@@ -8,6 +8,7 @@ import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { KitThumb, EmptyState, IconButton } from '../components';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'KitList'>;
 
@@ -47,7 +48,7 @@ function makeStyles(C: ColorPalette) {
     addBtn: {
       borderWidth: 2, borderStyle: 'dashed', borderColor: C.borderDashed,
       borderRadius: Radius.xl, padding: Spacing.lg,
-      alignItems: 'center', justifyContent: 'center', marginTop: Spacing.xs,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, marginTop: Spacing.xs,
     },
     addBtnText: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: C.blue },
   });
@@ -111,7 +112,7 @@ export function KitListScreen() {
         ListHeaderComponent={
           <View style={s.header}>
             <Text style={s.title}>Мои аптечки</Text>
-            <IconButton emoji="➕" onPress={() => navigation.navigate('CreateEditKit', {})} />
+            <IconButton icon="plus" onPress={() => navigation.navigate('CreateEditKit', {})} />
           </View>
         }
         ListEmptyComponent={
@@ -172,7 +173,7 @@ export function KitListScreen() {
                 onPress={() => openKitMenu(item)}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
-                <Text style={s.menuDots}>•••</Text>
+                <Icon name="dots-horizontal" size={22} color={C.textSecondary} />
               </TouchableOpacity>
             </TouchableOpacity>
           );
@@ -183,7 +184,8 @@ export function KitListScreen() {
             onPress={() => navigation.navigate('CreateEditKit', {})}
             activeOpacity={0.8}
           >
-            <Text style={s.addBtnText}>＋ Добавить аптечку</Text>
+            <Icon name="plus" size={18} color={C.blue} />
+            <Text style={s.addBtnText}>Добавить аптечку</Text>
           </TouchableOpacity>
         }
       />

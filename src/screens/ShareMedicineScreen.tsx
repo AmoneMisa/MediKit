@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   SafeAreaView, Share, Alert, Clipboard, Image,
 } from 'react-native';
+import { useT } from '../i18n';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -125,6 +126,7 @@ export function ShareMedicineScreen() {
   const { medicineId, kitId } = route.params;
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+  const t = useT();
 
   const medicine = useAppStore(st => st.getMedicine(medicineId));
   const kit      = useAppStore(st => st.getKit(kitId));
@@ -228,7 +230,7 @@ export function ShareMedicineScreen() {
         </View>
 
         {/* ── Share buttons ── */}
-        <Text style={s.sectionLabel}>Поделиться через</Text>
+        <Text style={s.sectionLabel}>{t('share_via')}</Text>
 
         <TouchableOpacity style={[s.shareBtn, s.tgBtn]} onPress={handleTelegram} activeOpacity={0.85}>
           <Text style={{ fontSize: 20 }}>✈️</Text>
@@ -242,19 +244,19 @@ export function ShareMedicineScreen() {
 
         <TouchableOpacity style={[s.shareBtn, s.nativeBtn]} onPress={handleNativeShare} activeOpacity={0.85}>
           <Icon name="share-variant" size={20} color={C.white} />
-          <Text style={s.shareBtnText}>Другое приложение</Text>
+          <Text style={s.shareBtnText}>{t('other_app')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[s.shareBtn, s.copyBtn]} onPress={handleCopy} activeOpacity={0.85}>
           <Icon name={copied ? 'check' : 'content-copy'} size={20} color={C.blue} />
           <Text style={[s.shareBtnText, { color: C.blue }]}>
-            {copied ? 'Скопировано!' : 'Скопировать текст'}
+            {copied ? t('copied') : t('copy_text')}
           </Text>
         </TouchableOpacity>
 
         {/* ── Text preview ── */}
         <View style={s.textPreviewCard}>
-          <Text style={s.textPreviewLabel}>Предпросмотр текста</Text>
+          <Text style={s.textPreviewLabel}>{t('text_preview')}</Text>
           <Text style={s.textPreviewBody}>{shareText}</Text>
         </View>
 

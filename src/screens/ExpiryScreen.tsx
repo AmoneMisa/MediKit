@@ -10,6 +10,7 @@ import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { EmptyState } from '../components';
 import { differenceInDays, parseISO } from 'date-fns';
+import { useT } from '../i18n';
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList, 'Expiry'>;
 
@@ -53,6 +54,7 @@ export function ExpiryScreen() {
   const navigation = useNavigation<Nav>();
   const C          = useColors();
   const s          = useMemo(() => makeStyles(C), [C]);
+  const t          = useT();
 
   const medicines = useAllMedicinesSortedByExpiry();
 
@@ -64,7 +66,7 @@ export function ExpiryScreen() {
   return (
     <SafeAreaView style={s.root}>
       <View style={s.header}>
-        <Text style={s.title}>Сроки годности</Text>
+        <Text style={s.title}>{t('expiry_title')}</Text>
         {expired.length > 0 && (
           <View style={s.alertBanner}>
             <Text style={s.alertText}>
@@ -79,7 +81,7 @@ export function ExpiryScreen() {
         keyExtractor={m => m.id}
         contentContainerStyle={s.list}
         ListEmptyComponent={
-          <EmptyState kitten="kit" title="Все препараты в порядке" subtitle="Ни один препарат не истёк" />
+          <EmptyState kitten="kit" title={t('all_ok')} subtitle={t('no_expired_sub')} />
         }
         renderItem={({ item }) => (
           <ExpiryRow

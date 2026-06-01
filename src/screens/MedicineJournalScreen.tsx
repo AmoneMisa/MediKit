@@ -12,6 +12,7 @@ import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { EmptyState } from '../components';
+import { useT } from '../i18n';
 
 type Nav = NativeStackNavigationProp<JournalStackParamList, 'JournalHome'>;
 
@@ -106,6 +107,7 @@ export function MedicineJournalScreen() {
   const navigation = useNavigation<Nav>();
   const C      = useColors();
   const s      = useMemo(() => makeStyles(C), [C]);
+  const t      = useT();
   const insets = useSafeAreaInsets();
 
   const intakeLogs  = useAppStore(st => st.intakeLogs);
@@ -148,7 +150,7 @@ export function MedicineJournalScreen() {
   return (
     <SafeAreaView style={s.root}>
       <View style={s.header}>
-        <Text style={s.title}>Журнал</Text>
+        <Text style={s.title}>{t('journal')}</Text>
       </View>
 
       {/* Week navigation */}
@@ -196,9 +198,9 @@ export function MedicineJournalScreen() {
         ListEmptyComponent={
           <EmptyState
             kitten="calendar"
-            title="Нет записей"
-            subtitle="Добавьте запись о приёме препаратов"
-            actionLabel="Добавить запись"
+            title={t('no_entries')}
+            subtitle={t('no_entries_sub')}
+            actionLabel={t('add_entry')}
             onAction={() => navigation.navigate('AddIntakeLog', { date: selectedDate })}
           />
         }

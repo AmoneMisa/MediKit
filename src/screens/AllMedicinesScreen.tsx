@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Image,
 } from 'react-native';
+import { useT } from '../i18n';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,22 +18,7 @@ import type { Medicine } from '../types';
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'AllMedicines'>;
 
 type SortKey = 'usage' | 'recent' | 'alpha' | 'expiry';
-
-const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
-  { key: 'usage',  label: 'Популярные', icon: 'star-outline' },
-  { key: 'recent', label: 'Недавние',   icon: 'clock-outline' },
-  { key: 'alpha',  label: 'А→Я',        icon: 'sort-alphabetical-ascending' },
-  { key: 'expiry', label: 'Срок',       icon: 'calendar-alert' },
-];
-
 type StatusFilter = 'all' | 'expiring_soon' | 'expired' | 'low_stock';
-
-const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'all',           label: 'Все' },
-  { key: 'expiring_soon', label: '⚠️ Истекает' },
-  { key: 'expired',       label: '❌ Просрочен' },
-  { key: 'low_stock',     label: '📦 Мало' },
-];
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -108,6 +94,21 @@ export function AllMedicinesScreen() {
   const navigation = useNavigation<Nav>();
   const C          = useColors();
   const s          = useMemo(() => makeStyles(C), [C]);
+  const t          = useT();
+
+  const SORT_OPTIONS = useMemo(() => [
+    { key: 'usage'  as SortKey, label: t('sort_popular'), icon: 'star-outline' },
+    { key: 'recent' as SortKey, label: t('sort_recent'),  icon: 'clock-outline' },
+    { key: 'alpha'  as SortKey, label: t('sort_alpha'),   icon: 'sort-alphabetical-ascending' },
+    { key: 'expiry' as SortKey, label: t('sort_expiry_short'), icon: 'calendar-alert' },
+  ], [t]);
+
+  const STATUS_FILTERS = useMemo(() => [
+    { key: 'all'           as StatusFilter, label: t('filter_all') },
+    { key: 'expiring_soon' as StatusFilter, label: t('filter_expiring') },
+    { key: 'expired'       as StatusFilter, label: t('filter_expired') },
+    { key: 'low_stock'     as StatusFilter, label: t('filter_low_stock') },
+  ], [t]);
 
   const medicines  = useAppStore(st => st.medicines);
   const kits       = useAppStore(st => st.kits);
@@ -218,7 +219,7 @@ export function AllMedicinesScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={s.titleRow}>
-          <Text style={s.title}>Все препараты</Text>
+          <Text style={s.title}>{t('all_medicines')}</Text>
           <View style={s.countBadge}>
             <Text style={s.countText}>{filtered.length}</Text>
           </View>
@@ -229,7 +230,7 @@ export function AllMedicinesScreen() {
           <Icon name="magnify" size={18} color={C.textTertiary} />
           <TextInput
             style={s.searchInput}
-            placeholder="Название, вещество, производитель…"
+            placeholder={t('search_medicines_ph')}
             placeholderTextColor={C.textTertiary}
             value={query}
             onChangeText={setQuery}
@@ -278,8 +279,8 @@ export function AllMedicinesScreen() {
         ListEmptyComponent={
           <EmptyState
             kitten="confused"
-            title={query ? 'Ничего не найдено' : 'Нет препаратов'}
-            subtitle={query ? 'Попробуйте другой запрос' : 'Добавьте препараты в ваши аптечки'}
+            title={query ? t('nothing_found') : t('no_medicines')}
+            subtitle={query ? t('try_another_query') : t('add_medicines_hint')}
           />
         }
       />

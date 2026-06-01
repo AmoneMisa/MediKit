@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { useT } from '../i18n';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { KitsStackParamList, MedicineKit } from '../types';
@@ -60,6 +61,7 @@ export function KitListScreen() {
   const navigation = useNavigation<Nav>();
   const C          = useColors();
   const s          = useMemo(() => makeStyles(C), [C]);
+  const t          = useT();
 
   const rawKits   = useAppStore(state => state.kits);
   const medicines = useAppStore(state => state.medicines);
@@ -72,33 +74,33 @@ export function KitListScreen() {
     const priority = kit.priority ?? 0;
     Alert.alert(kit.name, undefined, [
       {
-        text: 'Редактировать',
+        text: t('edit'),
         onPress: () => navigation.navigate('CreateEditKit', { kitId: kit.id }),
       },
       {
-        text: 'Поднять в списке',
+        text: t('move_up'),
         onPress: () => updateKit(kit.id, { priority: priority + 1 }),
       },
       priority > 0 ? {
-        text: 'Опустить в списке',
+        text: t('move_down'),
         onPress: () => updateKit(kit.id, { priority: Math.max(0, priority - 1) }),
       } : null,
       {
-        text: 'Удалить аптечку',
+        text: t('delete_kit'),
         style: 'destructive' as const,
         onPress: () => confirmDelete(kit),
       },
-      { text: 'Отмена', style: 'cancel' as const },
+      { text: t('cancel'), style: 'cancel' as const },
     ].filter(Boolean) as any);
   }
 
   function confirmDelete(kit: MedicineKit) {
     Alert.alert(
-      'Удалить аптечку',
-      `Удалить «${kit.name}»? Все препараты в ней тоже будут удалены.`,
+      t('delete_kit'),
+      `${t('delete_kit')} «${kit.name}»?`,
       [
-        { text: 'Отмена', style: 'cancel' },
-        { text: 'Удалить', style: 'destructive', onPress: () => deleteKit(kit.id) },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('delete'), style: 'destructive', onPress: () => deleteKit(kit.id) },
       ],
     );
   }
@@ -111,7 +113,7 @@ export function KitListScreen() {
         contentContainerStyle={s.list}
         ListHeaderComponent={
           <View style={s.header}>
-            <Text style={s.title}>Мои аптечки</Text>
+            <Text style={s.title}>{t('my_kits')}</Text>
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
               <IconButton icon="view-list" onPress={() => navigation.navigate('AllMedicines')} />
               <IconButton icon="plus" onPress={() => navigation.navigate('CreateEditKit', {})} />
@@ -121,9 +123,9 @@ export function KitListScreen() {
         ListEmptyComponent={
           <EmptyState
             kitten="kit"
-            title="Нет аптечек"
-            subtitle="Создайте первую аптечку"
-            actionLabel="Создать аптечку"
+            title={t('no_kits')}
+            subtitle={t('create_first_kit')}
+            actionLabel={t('create_kit')}
             onAction={() => navigation.navigate('CreateEditKit', {})}
           />
         }
@@ -188,7 +190,7 @@ export function KitListScreen() {
             activeOpacity={0.8}
           >
             <Icon name="plus" size={18} color={C.blue} />
-            <Text style={s.addBtnText}>Добавить аптечку</Text>
+            <Text style={s.addBtnText}>{t('add_kit')}</Text>
           </TouchableOpacity>
         }
       />

@@ -11,6 +11,7 @@ import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { EmptyState } from '../components';
 import type { Person } from '../types';
+import { useT } from '../i18n';
 
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
@@ -94,6 +95,7 @@ export function PersonsScreen() {
   const user         = useAppStore(s => s.user);
   const kits         = useAppStore(s => s.kits);
   const C      = useColors();
+  const t      = useT();
   const s      = useMemo(() => makeStyles(C), [C]);
   const insets = useSafeAreaInsets();
 
@@ -110,7 +112,7 @@ export function PersonsScreen() {
   function handleAdd() {
     const trimNickname = nickname.trim().replace(/^@/, '');
     if (!trimNickname) {
-      Alert.alert('Укажите никнейм', 'Никнейм обязателен для поиска пользователя.');
+      Alert.alert(t('specify_nickname'), t('nickname_required_msg'));
       return;
     }
     const displayName = [name.trim(), surname.trim()].filter(Boolean).join(' ') || trimNickname;
@@ -129,13 +131,13 @@ export function PersonsScreen() {
   }
 
   function handleDelete(person: Person) {
-    Alert.alert('Удалить контакт', `Удалить @${person.nickname}?`, [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Удалить', style: 'destructive', onPress: () => deletePerson(person.id) },
+    Alert.alert(t('delete_contact'), `${t('delete_contact')} @${person.nickname}?`, [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => deletePerson(person.id) },
     ]);
   }
 
-  const myNickname = user.nickname ?? 'не задан';
+  const myNickname = user.nickname ?? t('not_set');
 
   return (
     <SafeAreaView style={s.root}>
@@ -147,15 +149,15 @@ export function PersonsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={s.myName}>{[user.name, user.surname].filter(Boolean).join(' ')}</Text>
           <Text style={s.myNickname}>@{myNickname}</Text>
-          <Text style={s.myHint}>Ваш никнейм — поделитесь им, чтобы вас нашли</Text>
+          <Text style={s.myHint}>{t('your_nickname_hint')}</Text>
         </View>
       </View>
 
       <View style={s.listHeader}>
-        <Text style={s.listTitle}>Контакты MediKit</Text>
+        <Text style={s.listTitle}>{t('medikit_contacts')}</Text>
         <TouchableOpacity style={s.addBtn} onPress={openModal} activeOpacity={0.85}>
           <Icon name="plus" size={14} color={C.white} />
-          <Text style={s.addBtnText}>Добавить</Text>
+          <Text style={s.addBtnText}>{t('add')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -166,9 +168,9 @@ export function PersonsScreen() {
         ListEmptyComponent={
           <EmptyState
             kitten="waving"
-            title="Нет контактов"
-            subtitle="Добавьте других пользователей MediKit по никнейму, чтобы делиться аптечками"
-            actionLabel="Добавить контакт"
+            title={t('no_contacts')}
+            subtitle={t('no_contacts_sub')}
+            actionLabel={t('add_contact')}
             onAction={openModal}
           />
         }
@@ -187,7 +189,7 @@ export function PersonsScreen() {
                     {sharedKits.map(k => `${k.icon} ${k.name}`).join('  ')}
                   </Text>
                 ) : (
-                  <Text style={s.noKits}>Нет общих аптечек</Text>
+                  <Text style={s.noKits}>{t('no_shared_kits')}</Text>
                 )}
               </View>
               <TouchableOpacity
@@ -207,10 +209,10 @@ export function PersonsScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={[s.modal, { paddingBottom: Math.max(Spacing.xxxl, insets.bottom + Spacing.lg) }]}>
-            <Text style={s.modalTitle}>Добавить контакт</Text>
-            <Text style={s.modalSub}>Введите никнейм пользователя MediKit</Text>
+            <Text style={s.modalTitle}>{t('add_contact')}</Text>
+            <Text style={s.modalSub}>{t('enter_medikit_nickname')}</Text>
 
-            <Text style={s.fieldLabel}>Никнейм *</Text>
+            <Text style={s.fieldLabel}>{t('nickname_label')}</Text>
             <TextInput
               style={s.fieldInput}
               placeholder="@nickname"
@@ -220,19 +222,19 @@ export function PersonsScreen() {
               autoCapitalize="none"
               returnKeyType="next"
             />
-            <Text style={s.fieldLabel}>Имя</Text>
+            <Text style={s.fieldLabel}>{t('first_name')}</Text>
             <TextInput
               style={s.fieldInput}
-              placeholder="Имя"
+              placeholder={t('first_name')}
               placeholderTextColor={C.textTertiary}
               value={name}
               onChangeText={setName}
               returnKeyType="next"
             />
-            <Text style={s.fieldLabel}>Фамилия</Text>
+            <Text style={s.fieldLabel}>{t('last_name')}</Text>
             <TextInput
               style={s.fieldInput}
-              placeholder="Фамилия"
+              placeholder={t('last_name')}
               placeholderTextColor={C.textTertiary}
               value={surname}
               onChangeText={setSurname}
@@ -240,10 +242,10 @@ export function PersonsScreen() {
             />
 
             <TouchableOpacity style={s.saveBtn} onPress={handleAdd} activeOpacity={0.85}>
-              <Text style={s.saveBtnText}>Добавить</Text>
+              <Text style={s.saveBtnText}>{t('add')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.cancelBtn} onPress={() => setModalVisible(false)}>
-              <Text style={s.cancelBtnText}>Отмена</Text>
+              <Text style={s.cancelBtnText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

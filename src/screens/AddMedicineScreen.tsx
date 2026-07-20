@@ -9,6 +9,7 @@ import type { KitsStackParamList } from '../types';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
+import { useT } from '../i18n';
 
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'AddMedicine'>;
 
@@ -36,36 +37,37 @@ export function AddMedicineScreen() {
   const kitId: string = route.params?.kitId ?? 'kit-1';
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+  const t = useT();
 
-  const OPTIONS = [
+  const OPTIONS = useMemo(() => [
     {
       emoji:    '📷',
       bg:       '#C8E8FF',
-      title:    'Сканировать упаковку',
-      subtitle: 'Штрих-код, QR или фото блистера',
+      title:    t('scan_package'),
+      subtitle: t('scan_package_sub'),
       onPress:  () => navigation.navigate('ScanMedicine', { kitId }),
     },
     {
       emoji:    '🔍',
       bg:       '#D8C8FF',
-      title:    'Найти в базе',
-      subtitle: 'Поиск по названию препарата',
+      title:    t('find_in_db'),
+      subtitle: t('find_in_db_sub'),
       onPress:  () => navigation.navigate('SearchMedicine', { kitId }),
     },
     {
       emoji:    '✏️',
       bg:       '#C8FFD8',
-      title:    'Ввести вручную',
-      subtitle: 'Название, форма, количество, срок',
+      title:    t('enter_manually'),
+      subtitle: t('enter_manually_sub'),
       onPress:  () => navigation.navigate('ManualEntry', { kitId }),
     },
-  ];
+  ], [t, kitId]);
 
   return (
     <SafeAreaView style={s.root}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.title}>Добавить препарат</Text>
-        <Text style={s.subtitle}>Выберите способ — мы заполним всё автоматически 🚀</Text>
+        <Text style={s.title}>{t('add_medicine')}</Text>
+        <Text style={s.subtitle}>{t('choose_method_hint')}</Text>
 
         {OPTIONS.map(o => (
           <TouchableOpacity key={o.title} style={s.option} onPress={o.onPress} activeOpacity={0.85}>

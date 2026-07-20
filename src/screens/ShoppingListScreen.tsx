@@ -15,6 +15,7 @@ import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { EmptyState } from '../components';
 import type { ShoppingItem, MedicineForm, MedicinePrefill } from '../types';
+import { useT } from '../i18n';
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,7 @@ export function ShoppingListScreen() {
   const C      = useColors();
   const s      = useMemo(() => makeStyles(C), [C]);
   const insets = useSafeAreaInsets();
+  const t      = useT();
 
   const items         = useAppStore(st => st.shoppingItems);
   const addItem       = useAppStore(st => st.addShoppingItem);
@@ -282,10 +284,10 @@ export function ShoppingListScreen() {
   return (
     <SafeAreaView style={s.root}>
       <View style={s.header}>
-        <Text style={s.title}>Купить</Text>
+        <Text style={s.title}>{t('shopping_title')}</Text>
         {items.length > 0 && (
           <Text style={{ fontSize: Typography.size.body, color: C.textSecondary, fontWeight: Typography.weight.semibold }}>
-            {items.length} {items.length === 1 ? 'позиция' : 'позиций'}
+            {items.length} {t('pcs')}
           </Text>
         )}
       </View>
@@ -297,9 +299,9 @@ export function ShoppingListScreen() {
         ListEmptyComponent={
           <EmptyState
             kitten="shopping"
-            title="Список покупок пуст"
-            subtitle="Добавьте препараты, которые нужно купить"
-            actionLabel="Добавить"
+            title={t('shopping_empty')}
+            subtitle={t('shopping_empty_sub')}
+            actionLabel={t('add')}
             onAction={() => setMode('menu')}
           />
         }
@@ -308,9 +310,9 @@ export function ShoppingListScreen() {
             style={s.card}
             onPress={() => openBuyConfirm(item)}
             onLongPress={() =>
-              Alert.alert(item.name, 'Удалить из списка?', [
-                { text: 'Отмена', style: 'cancel' },
-                { text: 'Удалить', style: 'destructive', onPress: () => deleteItem(item.id) },
+              Alert.alert(item.name, `${t('delete')}?`, [
+                { text: t('cancel'), style: 'cancel' },
+                { text: t('delete'), style: 'destructive', onPress: () => deleteItem(item.id) },
               ])
             }
             activeOpacity={0.85}
@@ -325,7 +327,7 @@ export function ShoppingListScreen() {
               ) : null}
             </View>
             <View style={s.itemQty}>
-              <Text style={s.itemQtyText}>{item.quantity} шт</Text>
+              <Text style={s.itemQtyText}>{item.quantity} {t('pcs')}</Text>
             </View>
             <Icon name="chevron-right" size={20} color={C.textTertiary} />
           </TouchableOpacity>

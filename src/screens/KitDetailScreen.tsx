@@ -13,17 +13,10 @@ import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { MedicineIcon, StatusBadge, EmptyState, FilterPill } from '../components';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useT } from '../i18n';
 
 type Nav   = NativeStackNavigationProp<KitsStackParamList, 'KitDetail'>;
 type Route = RouteProp<KitsStackParamList, 'KitDetail'>;
-
-const FILTERS: { key: MedicineFilter; label: string }[] = [
-  { key: 'all',           label: 'Все' },
-  { key: 'expiring_soon', label: '⚠️ Истекает' },
-  { key: 'expired',       label: '❌ Просрочен' },
-  { key: 'low_stock',     label: '📦 Мало' },
-  { key: 'recent',        label: '🆕 Новые' },
-];
 
 // ── Styles factory ─────────────────────────────────────────────────────────────
 
@@ -126,6 +119,15 @@ export function KitDetailScreen() {
   const { kitId }  = route.params;
   const C          = useColors();
   const s          = useMemo(() => makeStyles(C), [C]);
+  const t          = useT();
+
+  const FILTERS = useMemo(() => [
+    { key: 'all'           as MedicineFilter, label: t('filter_all') },
+    { key: 'expiring_soon' as MedicineFilter, label: t('filter_expiring') },
+    { key: 'expired'       as MedicineFilter, label: t('filter_expired') },
+    { key: 'low_stock'     as MedicineFilter, label: t('filter_low_stock') },
+    { key: 'recent'        as MedicineFilter, label: t('filter_new') },
+  ], [t]);
 
   const [filter,    setFilter]    = useState<MedicineFilter>('all');
   const [query,     setQuery]     = useState('');
@@ -148,7 +150,7 @@ export function KitDetailScreen() {
   if (!kit) {
     return (
       <SafeAreaView style={s.root}>
-        <Text style={{ padding: 20, color: C.textPrimary }}>Аптечка не найдена</Text>
+        <Text style={{ padding: 20, color: C.textPrimary }}>{t('kit_not_found')}</Text>
       </SafeAreaView>
     );
   }
@@ -161,12 +163,12 @@ export function KitDetailScreen() {
   function handleDelete() {
     setMenuOpen(false);
     Alert.alert(
-      'Удалить аптечку',
-      `Удалить «${kit!.name}»? Все препараты в ней тоже будут удалены.`,
+      t('delete_kit'),
+      `${t('delete_kit')} «${kit!.name}»?`,
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Удалить', style: 'destructive',
+          text: t('delete'), style: 'destructive',
           onPress: () => { deleteKit(kitId); navigation.popToTop(); },
         },
       ],
@@ -191,7 +193,7 @@ export function KitDetailScreen() {
               <Text style={s.kitName} numberOfLines={1}>{kit.name}</Text>
             </View>
             <Text style={s.kitSub}>
-              {kit.members.length > 1 ? `👥 ${kit.members.length} участника` : '🔒 Личная'}
+              {kit.members.length > 1 ? `👥 ${kit.members.length} ${t('members')}` : `🔒 ${t('personal_kit')}`}
             </Text>
           </View>
         </View>
@@ -210,7 +212,7 @@ export function KitDetailScreen() {
       {/* Tag hint */}
       {availableTags.length === 0 && medicines.length > 0 ? (
         <View style={s.tagHintRow}>
-          <Text style={s.tagHintText}>🏷 Добавьте теги препаратам для быстрой фильтрации</Text>
+          <Text style={s.tagHintText}>🏷 {t('add_tags_hint')}</Text>
         </View>
       ) : null}
 
@@ -222,7 +224,7 @@ export function KitDetailScreen() {
             onPress={() => setTagFilter(undefined)}
             activeOpacity={0.75}
           >
-            <Text style={[s.tagChipText, !tagFilter && s.tagChipTextActive]}>Все теги</Text>
+            <Text style={[s.tagChipText, !tagFilter && s.tagChipTextActive]}>{t('all_tags')}</Text>
           </TouchableOpacity>
           {availableTags.map(tag => (
             <TouchableOpacity
@@ -242,7 +244,7 @@ export function KitDetailScreen() {
         <Text style={s.searchIcon}>🔍</Text>
         <TextInput
           style={s.searchInput}
-          placeholder="Найти препарат…"
+          placeholder={t('search_medicine_ph')}
           placeholderTextColor={C.textTertiary}
           value={query}
           onChangeText={setQuery}
@@ -262,9 +264,9 @@ export function KitDetailScreen() {
         ListEmptyComponent={
           <EmptyState
             kitten="confused"
-            title={query ? 'Ничего не найдено' : 'Нет препаратов'}
-            subtitle={query ? 'Попробуйте другое название' : 'Добавьте первый препарат в аптечку'}
-            actionLabel={query ? undefined : 'Добавить препарат'}
+            title={query ? t('nothing_found') : t('no_medicines')}
+            subtitle={query ? t('try_other_name') : t('add_first_medicine')}
+            actionLabel={query ? undefined : t('add_medicine')}
             onAction={() => navigation.navigate('AddMedicine', { kitId })}
           />
         }
@@ -308,7 +310,7 @@ export function KitDetailScreen() {
 
             <TouchableOpacity style={s.menuRow} onPress={handleEdit} activeOpacity={0.8}>
               <Icon name="pencil" size={20} color={C.textSecondary} style={s.menuRowIcon as any} />
-              <Text style={s.menuRowText}>Редактировать аптечку</Text>
+              <Text style={s.menuRowText}>{t('edit_kit')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -317,7 +319,7 @@ export function KitDetailScreen() {
               activeOpacity={0.8}
             >
               <Icon name="share-variant" size={20} color={C.textSecondary} style={s.menuRowIcon as any} />
-              <Text style={s.menuRowText}>Поделиться аптечкой</Text>
+              <Text style={s.menuRowText}>{t('share_kit')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -326,14 +328,14 @@ export function KitDetailScreen() {
               activeOpacity={0.8}
             >
               <Icon name="account-group" size={20} color={C.textSecondary} style={s.menuRowIcon as any} />
-              <Text style={s.menuRowText}>Участники</Text>
+              <Text style={s.menuRowText}>{t('members')}</Text>
             </TouchableOpacity>
 
             <View style={s.menuDivider} />
 
             <TouchableOpacity style={s.menuRow} onPress={handleDelete} activeOpacity={0.8}>
               <Icon name="delete" size={20} color={C.danger} style={s.menuRowIcon as any} />
-              <Text style={[s.menuRowText, { color: C.danger }]}>Удалить аптечку</Text>
+              <Text style={[s.menuRowText, { color: C.danger }]}>{t('delete_kit')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

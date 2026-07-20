@@ -12,6 +12,7 @@ import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { WarningBanner, StatusBadge, MedicineIcon } from '../components';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useT } from '../i18n';
 
 type Nav   = NativeStackNavigationProp<KitsStackParamList, 'MedicineDetail'>;
 type Route = RouteProp<KitsStackParamList, 'MedicineDetail'>;
@@ -129,6 +130,7 @@ export function MedicineDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<Route>();
   const { medicineId, kitId } = route.params;
+  const t = useT();
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
 
@@ -150,7 +152,7 @@ export function MedicineDetailScreen() {
   if (!medicine) {
     return (
       <SafeAreaView style={s.root}>
-        <Text style={{ padding: 20, color: C.textPrimary }}>Препарат не найден</Text>
+        <Text style={{ padding: 20, color: C.textPrimary }}>{t('medicine_not_found')}</Text>
       </SafeAreaView>
     );
   }
@@ -161,16 +163,16 @@ export function MedicineDetailScreen() {
     : 0;
 
   function handleDecrement() {
-    Alert.alert('Отметить использование', 'Уменьшить запас на 1?', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Да', onPress: () => decrement(medicineId) },
+    Alert.alert(t('mark_as_used'), t('reduce_by_one'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('yes'), onPress: () => decrement(medicineId) },
     ]);
   }
 
   function handleDelete() {
-    Alert.alert('Удалить препарат', `Удалить «${medicine!.name}»?`, [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Удалить', style: 'destructive', onPress: () => { deleteMed(medicineId); navigation.goBack(); } },
+    Alert.alert(t('delete_medicine'), `${t('delete_medicine')} «${medicine!.name}»?`, [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => { deleteMed(medicineId); navigation.goBack(); } },
     ]);
   }
 
@@ -196,7 +198,7 @@ export function MedicineDetailScreen() {
         {/* ── Quick info card ── */}
         <View style={s.card}>
           <View style={s.infoRow}>
-            <Text style={s.infoLabel}>Осталось</Text>
+            <Text style={s.infoLabel}>{t('remaining')}</Text>
             <Text style={s.infoVal}>{medicine.remainingQuantity} из {medicine.totalQuantity}</Text>
           </View>
           <View style={s.bar}>
@@ -207,7 +209,7 @@ export function MedicineDetailScreen() {
           </View>
 
           <View style={[s.infoRow, { marginTop: Spacing.md }]}>
-            <Text style={s.infoLabel}>Срок годности</Text>
+            <Text style={s.infoLabel}>{t('expiry_date')}</Text>
             <Text style={[s.infoVal, expiryInfo.isExpired
               ? { color: C.dangerDark }
               : expiryInfo.daysLeft <= 30 ? { color: C.warningDark } : {}]}>
@@ -217,21 +219,21 @@ export function MedicineDetailScreen() {
 
           {medicine.activeIngredient ? (
             <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Действующее вещество</Text>
+              <Text style={s.infoLabel}>{t('active_ingredient')}</Text>
               <Text style={[s.infoVal, { flexShrink: 1, textAlign: 'right' }]}>{medicine.activeIngredient}</Text>
             </View>
           ) : null}
 
           {medicine.manufacturer ? (
             <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Производитель</Text>
+              <Text style={s.infoLabel}>{t('manufacturer')}</Text>
               <Text style={[s.infoVal, { flexShrink: 1, textAlign: 'right' }]}>{medicine.manufacturer}</Text>
             </View>
           ) : null}
 
           {kit ? (
             <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Аптечка</Text>
+              <Text style={s.infoLabel}>{t('kit_label')}</Text>
               <Text style={s.infoVal}>{kit.icon} {kit.name}</Text>
             </View>
           ) : null}
@@ -240,8 +242,8 @@ export function MedicineDetailScreen() {
         {/* ── Drug interactions in kit ── */}
         {conflicts.length > 0 ? (
           <View style={s.conflictCard}>
-            <Text style={s.conflictTitle}>⚠️ Несовместимо с препаратами в аптечке</Text>
-            <Text style={s.conflictSub}>Не принимайте одновременно с:</Text>
+            <Text style={s.conflictTitle}>{t('incompatible_in_kit')}</Text>
+            <Text style={s.conflictSub}>{t('do_not_take_together')}</Text>
             {conflicts.map(m => (
               <TouchableOpacity
                 key={m.id}
@@ -263,10 +265,10 @@ export function MedicineDetailScreen() {
         {/* ── Composition ── */}
         {medicine.composition && medicine.composition.length > 0 ? (
           <View style={s.card}>
-            <Text style={s.secTitle}>Состав</Text>
+            <Text style={s.secTitle}>{t('composition')}</Text>
             <View style={s.compHeader}>
-              <Text style={s.compHeaderCell}>Компонент</Text>
-              <Text style={[s.compHeaderCell, { textAlign: 'right' }]}>Количество</Text>
+              <Text style={s.compHeaderCell}>{t('component')}</Text>
+              <Text style={[s.compHeaderCell, { textAlign: 'right' }]}>{t('quantity')}</Text>
             </View>
             {medicine.composition.map((item, i) => (
               <View key={i} style={[s.compRow, i % 2 === 0 && s.compRowAlt]}>
@@ -279,21 +281,21 @@ export function MedicineDetailScreen() {
 
         {medicine.description ? (
           <View style={s.card}>
-            <Text style={s.secTitle}>Для чего</Text>
+            <Text style={s.secTitle}>{t('for_what')}</Text>
             <Text style={s.bodyText}>{medicine.description}</Text>
           </View>
         ) : null}
 
         {medicine.usageNotes ? (
           <View style={s.card}>
-            <Text style={s.secTitle}>Когда применять</Text>
+            <Text style={s.secTitle}>{t('when_to_use')}</Text>
             <Text style={s.bodyText}>{medicine.usageNotes}</Text>
           </View>
         ) : null}
 
         {medicine.warnings && medicine.warnings.length > 0 ? (
           <View style={s.card}>
-            <Text style={s.secTitle}>⚠️ Противопоказания</Text>
+            <Text style={s.secTitle}>{t('contraindications')}</Text>
             <View style={s.warnChips}>
               {medicine.warnings.map((w, i) => (
                 <View key={i} style={s.warnChip}>
@@ -305,12 +307,12 @@ export function MedicineDetailScreen() {
         ) : null}
 
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
-          <WarningBanner emoji="🚫" title="Несовместимые вещества:" body={medicine.incompatibleWith.join(', ')} />
+          <WarningBanner emoji="🚫" title={t('incompatible_substances')} body={medicine.incompatibleWith.join(', ')} />
         ) : null}
 
         {medicine.storageNotes ? (
           <View style={s.card}>
-            <Text style={s.secTitle}>🌡 Хранение</Text>
+            <Text style={s.secTitle}>{t('storage')}</Text>
             <Text style={s.bodyText}>{medicine.storageNotes}</Text>
           </View>
         ) : null}
@@ -327,14 +329,14 @@ export function MedicineDetailScreen() {
 
         {/* ── Actions ── */}
         <View style={s.actionGrid}>
-          <ActionBtn label="Изменить" icon="pencil"           onPress={() => navigation.navigate('ManualEntry', { kitId, medicineId })} />
-          <ActionBtn label="Кол-во"  icon="package-variant"  onPress={handleDecrement} />
-          <ActionBtn label="Напомни" icon="bell"             primary onPress={() => {
+          <ActionBtn label={t('edit')}          icon="pencil"           onPress={() => navigation.navigate('ManualEntry', { kitId, medicineId })} />
+          <ActionBtn label={t('quantity_short')} icon="package-variant"  onPress={handleDecrement} />
+          <ActionBtn label={t('remind')}         icon="bell"             primary onPress={() => {
             (navigation as any).navigate('NotificationsTab', {
               screen: 'CreateReminder', params: { kitId, medicineId },
             });
           }} />
-          <ActionBtn label="Удалить" icon="delete"           danger onPress={handleDelete} />
+          <ActionBtn label={t('delete')}  icon="delete"           danger onPress={handleDelete} />
         </View>
         <TouchableOpacity
           style={s.shareBtn}
@@ -342,7 +344,7 @@ export function MedicineDetailScreen() {
           activeOpacity={0.85}
         >
           <Icon name="share-variant" size={18} color={C.blue} />
-          <Text style={s.shareBtnText}>Поделиться препаратом</Text>
+          <Text style={s.shareBtnText}>{t('share_medicine')}</Text>
         </TouchableOpacity>
 
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
@@ -351,7 +353,7 @@ export function MedicineDetailScreen() {
             onPress={() => navigation.navigate('MedicineInteraction', { medicineId })}
           >
             <Icon name="flask-outline" size={16} color={C.blue} />
-            <Text style={s.interactionLinkText}>Подробнее о совместимости</Text>
+            <Text style={s.interactionLinkText}>{t('more_compatibility')}</Text>
             <Icon name="arrow-right" size={16} color={C.blue} />
           </TouchableOpacity>
         ) : null}

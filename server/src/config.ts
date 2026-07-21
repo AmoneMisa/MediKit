@@ -23,6 +23,12 @@ export const config = {
   port: Number(process.env.PORT ?? 4000),
   jwtSecret: process.env.JWT_SECRET ?? 'change-me-in-production',
 
+  // OAuth Web client ID(s) used to verify Google ID tokens. Accepts a comma-
+  // separated list so the Android + Web client IDs can both be trusted audiences.
+  // Empty → the /auth/google endpoint is disabled (returns 503).
+  googleClientIds: (process.env.GOOGLE_CLIENT_ID ?? '')
+    .split(',').map(s => s.trim()).filter(Boolean),
+
   // PostgreSQL connection. DATABASE_URL takes precedence; otherwise the PG* vars
   // are assembled into a connection string.
   databaseUrl:

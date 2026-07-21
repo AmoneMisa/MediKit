@@ -5,6 +5,7 @@ import { q } from './db.js';
 export interface UserRow {
   id: string; nickname: string; name: string; surname: string | null;
   email: string | null; avatar_initials: string; created_at: string;
+  google_id?: string | null;
 }
 
 export function publicUser(row: UserRow) {
@@ -16,6 +17,7 @@ export function publicUser(row: UserRow) {
     email: row.email ?? undefined,
     avatarInitials: row.avatar_initials,
     createdAt: row.created_at,
+    googleLinked: !!row.google_id,
   };
 }
 

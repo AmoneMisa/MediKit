@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView, TextInput, Switch, Alert, Share, Clipboard,
+  SafeAreaView, ScrollView, TextInput, Switch, Alert, Share, Clipboard, ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppStore, getMedicineStatus } from '../store';
-import { ensureAuth, createInvite } from '../api';
+import { ensureAuth, createInvite, updateMe, signInWithGoogle, isGoogleConfigured, GoogleCancelled } from '../api';
 import { useAllMedicinesSortedByExpiry, useExpiryLabel } from '../hooks';
 import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
@@ -776,6 +776,25 @@ export function ProfileScreen() {
   const [surname,  setSurname]  = useState(user.surname ?? '');
   const [nickname, setNickname] = useState(user.nickname ?? '');
   const [email,    setEmail]    = useState(user.email ?? '');
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  async function handleGoogle() {
+    setGoogleBusy(true);
+    try {
+      const apiUser = await signInWithGoogle();
+      updateUser({
+        id: apiUser.id, nickname: apiUser.nickname, name: apiUser.name,
+        surname: apiUser.surname, email: apiUser.email,
+        avatarInitials: apiUser.avatarInitials, googleLinked: true,
+      });
+      Alert.alert('Google подключён', 'Аккаунт защищён — данные восстановятся на других устройствах.');
+    } catch (e) {
+      if (e instanceof GoogleCancelled) return; // user backed out — no error
+      Alert.alert('Не удалось войти через Google', e instanceof Error ? e.message : 'Попробуйте ещё раз.');
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
 
   function handleSave() {
     const trimName    = name.trim();
@@ -783,14 +802,18 @@ export function ProfileScreen() {
     if (!trimName) { Alert.alert('Укажите имя'); return; }
     const words    = [trimName, surname.trim()].filter(Boolean);
     const initials = words.map(w => w[0]?.toUpperCase() ?? '').join('').slice(0, 2);
-    updateUser({
+    const changes = {
       name:     trimName,
       surname:  surname.trim() || undefined,
       nickname: trimNick || undefined,
       email:    email.trim() || undefined,
       avatarInitials: initials || trimName.slice(0, 2).toUpperCase(),
-    });
+    };
+    updateUser(changes);
     setEditing(false);
+    // Persist to the server so the edit survives relaunch (GET /auth/me would
+    // otherwise overwrite it). Best-effort: stays local-first when offline.
+    updateMe(changes).catch(() => { /* offline → retry on next edit */ });
   }
 
   const displayName = [user.name, user.surname].filter(Boolean).join(' ');
@@ -837,6 +860,28 @@ export function ProfileScreen() {
           </View>
           <Icon name="pencil" size={16} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
+
+        {/* Google account link — hidden until a Web client ID is configured. */}
+        {isGoogleConfigured() && (
+          user.googleLinked ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: C.bgCard, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg }}>
+              <Text style={{ fontSize: 18, width: 26, textAlign: 'center' }}>✅</Text>
+              <Text style={{ flex: 1, fontSize: Typography.size.base, color: C.textSecondary }}>Google подключён</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: C.bgCard, borderColor: C.borderLight, borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg }}
+              onPress={handleGoogle} disabled={googleBusy} activeOpacity={0.85}
+            >
+              {googleBusy
+                ? <ActivityIndicator color={C.textSecondary} />
+                : <>
+                    <Text style={{ fontSize: 18 }}>🇬</Text>
+                    <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: C.textPrimary }}>Войти через Google</Text>
+                  </>}
+            </TouchableOpacity>
+          )
+        )}
 
         {[
           { emoji: '🏠', label: `Мои аптечки (${kits.length})`, onPress: () => {} },

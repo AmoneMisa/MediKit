@@ -156,6 +156,10 @@ export async function initDb(): Promise<void> {
       UNIQUE (ingredient_a, ingredient_b)
     );
 
+    -- Google account link (nullable; set when a user signs in with Google).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google ON users(google_id) WHERE google_id IS NOT NULL;
+
     CREATE INDEX IF NOT EXISTS idx_members_user  ON kit_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_activity_kit  ON activity(kit_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_notif_user    ON notifications(user_id, created_at);

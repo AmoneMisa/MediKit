@@ -98,6 +98,7 @@ export interface UserProfile {
   nickname?: string;
   email?: string;
   avatarInitials: string;
+  googleLinked?: boolean;
   ownedKitIds: string[];
   sharedKitIds: string[];
   createdAt: string;

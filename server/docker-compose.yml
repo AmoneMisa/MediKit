@@ -25,9 +25,10 @@ services:
       db:
         condition: service_healthy
     # Publish to localhost only; the host nginx terminates TLS for whiteslove.me
-    # and reverse-proxies to this port (same pattern as the other apps on the host).
+    # and reverse-proxies to this port. Host port 4000 was already taken on the
+    # server, so we expose 4010 on the host → 4000 inside the container.
     ports:
-      - "127.0.0.1:${PORT:-4000}:4000"
+      - "127.0.0.1:${HOST_PORT:-4010}:4000"
     environment:
       PORT: 4000
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}

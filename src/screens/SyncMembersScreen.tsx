@@ -6,6 +6,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute } from '@react-navigation/native';
 import { useAppStore } from '../store';
+import { ensureAuth, setMemberRole, removeMember, createInvite } from '../api';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
@@ -98,6 +99,7 @@ export function SyncMembersScreen() {
 
   const kit       = useAppStore(st => st.getKit(kitId));
   const updateKit = useAppStore(st => st.updateKit);
+  const mergeKit  = useAppStore(st => st.mergeKit);
   const user      = useAppStore(st => st.user);
 
   const [inviteEmail, setInviteEmail] = useState('');
@@ -118,11 +120,17 @@ export function SyncMembersScreen() {
         { text: 'Отмена', style: 'cancel' },
         {
           text: 'Изменить',
-          onPress: () => {
+          onPress: async () => {
+            // Optimistic local change, then reconcile with the server response.
             const newMembers = kit.members.map(m =>
               m.userId === member.userId ? { ...m, role: nextRole } : m,
             );
             updateKit(kitId, { members: newMembers });
+            try {
+              await ensureAuth();
+              const fresh = await setMemberRole(kitId, member.userId, nextRole as Exclude<KitAccessRole, 'owner'>);
+              mergeKit(fresh);
+            } catch { /* offline → keep optimistic local change */ }
           },
         },
       ],
@@ -137,9 +145,14 @@ export function SyncMembersScreen() {
         { text: 'Отмена', style: 'cancel' },
         {
           text: 'Удалить', style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             const newMembers = kit.members.filter(m => m.userId !== member.userId);
             updateKit(kitId, { members: newMembers });
+            try {
+              await ensureAuth();
+              const fresh = await removeMember(kitId, member.userId);
+              mergeKit(fresh);
+            } catch { /* offline → keep optimistic local change */ }
           },
         },
       ],
@@ -147,8 +160,14 @@ export function SyncMembersScreen() {
   }
 
   async function handleInvite() {
-    if (!inviteEmail.trim()) return;
-    const link = `https://medikit.app/invite/${kitId}?email=${encodeURIComponent(inviteEmail)}`;
+    const email = inviteEmail.trim();
+    if (!email) return;
+    let link = `https://medikit.app/invite/${kitId}?email=${encodeURIComponent(email)}`;
+    try {
+      await ensureAuth();
+      const invite = await createInvite(kitId, { email, role: 'viewer' });
+      link = invite.link;
+    } catch { /* offline → fall back to a static share link */ }
     await Share.share({ message: `Приглашение в аптечку «${kit.name}»: ${link}` });
     setInviteEmail('');
   }

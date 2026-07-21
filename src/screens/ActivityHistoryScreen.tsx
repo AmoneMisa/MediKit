@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, SafeAreaView,
+  View, Text, FlatList, StyleSheet, SafeAreaView, ActivityIndicator,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
@@ -9,6 +9,7 @@ import { useColors } from '../context/ThemeContext';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { KitActivityEvent } from '../types';
+import { ensureAuth, listActivity } from '../api';
 
 const EVENT_CONFIG: Record<KitActivityEvent['type'], { emoji: string; label: (e: KitActivityEvent) => string }> = {
   medicine_added:   { emoji: '➕', label: e => `Добавил(а) «${e.medicineName}»` },
@@ -44,10 +45,28 @@ function makeStyles(C: ColorPalette) {
 
 export function ActivityHistoryScreen() {
   const route = useRoute<any>();
-  const _kitId: string = route.params?.kitId;
-  const events: KitActivityEvent[] = [];
+  const kitId: string = route.params?.kitId;
+  const [events, setEvents] = useState<KitActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        await ensureAuth();
+        const rows = await listActivity(kitId);
+        if (alive) setEvents(rows);
+      } catch {
+        // Kit not yet synced to the server (offline-first) — show empty state.
+        if (alive) setEvents([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [kitId]);
 
   function renderItem({ item }: { item: KitActivityEvent }) {
     const cfg     = EVENT_CONFIG[item.type];
@@ -77,10 +96,16 @@ export function ActivityHistoryScreen() {
         keyExtractor={e => e.id}
         contentContainerStyle={s.list}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', padding: 40 }}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
-            <Text style={s.emptyTitle}>Нет истории изменений</Text>
-          </View>
+          loading ? (
+            <View style={{ alignItems: 'center', padding: 40 }}>
+              <ActivityIndicator color={C.blue} />
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', padding: 40 }}>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
+              <Text style={s.emptyTitle}>Нет истории изменений</Text>
+            </View>
+          )
         }
         renderItem={renderItem}
       />

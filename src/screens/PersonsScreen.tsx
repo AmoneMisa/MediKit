@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, Alert, TextInput, Modal, KeyboardAvoidingView, Platform,
@@ -6,6 +6,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../store';
+import { ensureAuth, addContact, removeContact, listContacts, contactToPerson } from '../api';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
@@ -92,6 +93,7 @@ export function PersonsScreen() {
   const persons      = useAppStore(s => s.persons);
   const addPerson    = useAppStore(s => s.addPerson);
   const deletePerson = useAppStore(s => s.deletePerson);
+  const hydrate      = useAppStore(s => s.hydrate);
   const user         = useAppStore(s => s.user);
   const kits         = useAppStore(s => s.kits);
   const C      = useColors();
@@ -104,36 +106,60 @@ export function PersonsScreen() {
   const [surname,      setSurname]      = useState('');
   const [nickname,     setNickname]     = useState('');
 
+  // Refresh contacts from the server on mount (stays local-first if offline).
+  useEffect(() => {
+    (async () => {
+      try {
+        await ensureAuth();
+        const contacts = await listContacts();
+        hydrate({ persons: contacts.map(contactToPerson) });
+      } catch { /* offline → keep local persons */ }
+    })();
+  }, [hydrate]);
+
   function openModal() {
     setName(''); setSurname(''); setNickname('');
     setModalVisible(true);
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     const trimNickname = nickname.trim().replace(/^@/, '');
     if (!trimNickname) {
       Alert.alert(t('specify_nickname'), t('nickname_required_msg'));
       return;
     }
-    const displayName = [name.trim(), surname.trim()].filter(Boolean).join(' ') || trimNickname;
-    const words    = displayName.split(/\s+/);
-    const initials = words.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
-    addPerson({
-      id:             `person-${Date.now()}`,
-      name:           displayName,
-      surname:        surname.trim() || undefined,
-      nickname:       trimNickname,
-      avatarInitials: initials || trimNickname.slice(0, 2).toUpperCase(),
-      sharedKitIds:   [],
-      createdAt:      new Date().toISOString(),
-    });
     setModalVisible(false);
+    try {
+      await ensureAuth();
+      const contact = await addContact(trimNickname);
+      addPerson(contactToPerson(contact));
+    } catch {
+      // Offline / unknown nickname → keep a local-only placeholder contact.
+      const displayName = [name.trim(), surname.trim()].filter(Boolean).join(' ') || trimNickname;
+      const words    = displayName.split(/\s+/);
+      const initials = words.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+      addPerson({
+        id:             `person-${Date.now()}`,
+        name:           displayName,
+        surname:        surname.trim() || undefined,
+        nickname:       trimNickname,
+        avatarInitials: initials || trimNickname.slice(0, 2).toUpperCase(),
+        sharedKitIds:   [],
+        createdAt:      new Date().toISOString(),
+      });
+    }
   }
 
   function handleDelete(person: Person) {
     Alert.alert(t('delete_contact'), `${t('delete_contact')} @${person.nickname}?`, [
       { text: t('cancel'), style: 'cancel' },
-      { text: t('delete'), style: 'destructive', onPress: () => deletePerson(person.id) },
+      {
+        text: t('delete'), style: 'destructive',
+        onPress: () => {
+          deletePerson(person.id);
+          ensureAuth().then(() => removeContact(person.id)).catch(() => { /* best-effort */ });
+        },
+      },
     ]);
   }
 

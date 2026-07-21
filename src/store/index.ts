@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { MMKV } from 'react-native-mmkv';
 import type { MedicineKit, Medicine, AppNotification, UserProfile, AppSettings, MedicineStatus, Person, MedicineReminder, ShoppingItem, MedicineIntakeLog } from '../types';
+import {
+  pushKitCreate, pushKitUpdate, pushKitDelete,
+  pushMedicineUpsert, pushMedicineDelete,
+  pushNotificationRead, pushAllNotificationsRead, pushNotificationDismiss,
+} from '../api/outbox';
 
 const mmkv = new MMKV({ id: 'medikit-store' });
 
@@ -92,6 +97,20 @@ interface AppStore {
   getReminder: (id: string) => MedicineReminder | undefined;
   unreadCount: () => number;
   allMedicinesSortedByExpiry: () => Medicine[];
+
+  // ── Sync application (server-authoritative; never re-push) ──────────────────
+  hydrate: (data: {
+    user?: Partial<UserProfile>;
+    kits?: MedicineKit[];
+    medicines?: Medicine[];
+    notifications?: AppNotification[];
+    persons?: Person[];
+  }) => void;
+  mergeKit: (kit: MedicineKit) => void;
+  removeKitLocal: (kitId: string) => void;
+  mergeMedicine: (medicine: Medicine) => void;
+  removeMedicineLocal: (medicineId: string) => void;
+  addNotificationLocal: (notification: AppNotification) => void;
 }
 
 const DEFAULT_USER: UserProfile = {
@@ -130,36 +149,54 @@ export const useAppStore = create<AppStore>()(
 
       updateUser: changes => set(s => ({ user: { ...s.user, ...changes } })),
 
-      addKit: kit => set(s => ({ kits: [...s.kits, kit] })),
-      updateKit: (kitId, changes) =>
+      addKit: kit => { set(s => ({ kits: [...s.kits, kit] })); pushKitCreate(kit); },
+      updateKit: (kitId, changes) => {
         set(s => ({
           kits: s.kits.map(k =>
             k.id === kitId ? { ...k, ...changes, updatedAt: new Date().toISOString() } : k,
           ),
-        })),
-      deleteKit: kitId =>
+        }));
+        pushKitUpdate(kitId, changes);
+      },
+      deleteKit: kitId => {
         set(s => ({
           kits: s.kits.filter(k => k.id !== kitId),
           medicines: s.medicines.filter(m => m.kitId !== kitId),
-        })),
+        }));
+        pushKitDelete(kitId);
+      },
 
-      addMedicine: medicine => set(s => ({ medicines: [...s.medicines, medicine] })),
-      updateMedicine: (medicineId, changes) =>
+      addMedicine: medicine => {
+        set(s => ({ medicines: [...s.medicines, medicine] }));
+        pushMedicineUpsert(medicine.kitId, medicine);
+      },
+      updateMedicine: (medicineId, changes) => {
+        let updated: Medicine | undefined;
         set(s => ({
-          medicines: s.medicines.map(m =>
-            m.id === medicineId ? { ...m, ...changes, updatedAt: new Date().toISOString() } : m,
-          ),
-        })),
-      deleteMedicine: medicineId =>
-        set(s => ({ medicines: s.medicines.filter(m => m.id !== medicineId) })),
-      decrementQuantity: (medicineId, amount = 1) =>
+          medicines: s.medicines.map(m => {
+            if (m.id !== medicineId) return m;
+            updated = { ...m, ...changes, updatedAt: new Date().toISOString() };
+            return updated;
+          }),
+        }));
+        if (updated) pushMedicineUpsert(updated.kitId, updated);
+      },
+      deleteMedicine: medicineId => {
+        const med = get().medicines.find(m => m.id === medicineId);
+        set(s => ({ medicines: s.medicines.filter(m => m.id !== medicineId) }));
+        if (med) pushMedicineDelete(med.kitId, medicineId);
+      },
+      decrementQuantity: (medicineId, amount = 1) => {
+        let updated: Medicine | undefined;
         set(s => ({
-          medicines: s.medicines.map(m =>
-            m.id === medicineId
-              ? { ...m, remainingQuantity: Math.max(0, m.remainingQuantity - amount), updatedAt: new Date().toISOString() }
-              : m,
-          ),
-        })),
+          medicines: s.medicines.map(m => {
+            if (m.id !== medicineId) return m;
+            updated = { ...m, remainingQuantity: Math.max(0, m.remainingQuantity - amount), updatedAt: new Date().toISOString() };
+            return updated;
+          }),
+        }));
+        if (updated) pushMedicineUpsert(updated.kitId, updated);
+      },
 
       addPerson: person => set(s => ({ persons: [...s.persons, person] })),
       updatePerson: (personId, changes) =>
@@ -169,14 +206,20 @@ export const useAppStore = create<AppStore>()(
       deletePerson: personId =>
         set(s => ({ persons: s.persons.filter(p => p.id !== personId) })),
 
-      markNotificationRead: notifId =>
+      markNotificationRead: notifId => {
         set(s => ({
           notifications: s.notifications.map(n => n.id === notifId ? { ...n, isRead: true } : n),
-        })),
-      markAllNotificationsRead: () =>
-        set(s => ({ notifications: s.notifications.map(n => ({ ...n, isRead: true })) })),
-      dismissNotification: notifId =>
-        set(s => ({ notifications: s.notifications.filter(n => n.id !== notifId) })),
+        }));
+        pushNotificationRead(notifId);
+      },
+      markAllNotificationsRead: () => {
+        set(s => ({ notifications: s.notifications.map(n => ({ ...n, isRead: true })) }));
+        pushAllNotificationsRead();
+      },
+      dismissNotification: notifId => {
+        set(s => ({ notifications: s.notifications.filter(n => n.id !== notifId) }));
+        pushNotificationDismiss(notifId);
+      },
 
       addReminder: r => set(s => ({ reminders: [...s.reminders, r] })),
       updateReminder: (id, changes) =>
@@ -185,7 +228,8 @@ export const useAppStore = create<AppStore>()(
         })),
       deleteReminder: id =>
         set(s => ({ reminders: s.reminders.filter(r => r.id !== id) })),
-      markReminderTaken: id =>
+      markReminderTaken: id => {
+        let updatedMed: Medicine | undefined;
         set(s => {
           const now = new Date().toISOString();
           const reminder = s.reminders.find(r => r.id === id);
@@ -194,14 +238,16 @@ export const useAppStore = create<AppStore>()(
           );
           // Auto-decrement medicine quantity
           const updatedMedicines = reminder
-            ? s.medicines.map(m =>
-                m.id === reminder.medicineId
-                  ? { ...m, remainingQuantity: Math.max(0, m.remainingQuantity - reminder.pillCount), updatedAt: now }
-                  : m,
-              )
+            ? s.medicines.map(m => {
+                if (m.id !== reminder.medicineId) return m;
+                updatedMed = { ...m, remainingQuantity: Math.max(0, m.remainingQuantity - reminder.pillCount), updatedAt: now };
+                return updatedMed;
+              })
             : s.medicines;
           return { reminders: updatedReminders, medicines: updatedMedicines };
-        }),
+        });
+        if (updatedMed) pushMedicineUpsert(updatedMed.kitId, updatedMed);
+      },
 
       addShoppingItem: item => set(s => ({ shoppingItems: [...s.shoppingItems, item] })),
       updateShoppingItem: (id, changes) =>
@@ -228,6 +274,43 @@ export const useAppStore = create<AppStore>()(
         [...get().medicines].sort(
           (a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime(),
         ),
+
+      // ── Sync application ────────────────────────────────────────────────────
+      // These apply server-authoritative data. They deliberately do NOT trigger
+      // outbox pushes, so bootstrap pulls and realtime events can't echo back.
+      hydrate: data =>
+        set(s => ({
+          user: data.user ? { ...s.user, ...data.user } : s.user,
+          kits: data.kits ?? s.kits,
+          medicines: data.medicines ?? s.medicines,
+          notifications: data.notifications ?? s.notifications,
+          persons: data.persons ?? s.persons,
+        })),
+      mergeKit: kit =>
+        set(s => ({
+          kits: s.kits.some(k => k.id === kit.id)
+            ? s.kits.map(k => (k.id === kit.id ? kit : k))
+            : [...s.kits, kit],
+        })),
+      removeKitLocal: kitId =>
+        set(s => ({
+          kits: s.kits.filter(k => k.id !== kitId),
+          medicines: s.medicines.filter(m => m.kitId !== kitId),
+        })),
+      mergeMedicine: medicine =>
+        set(s => ({
+          medicines: s.medicines.some(m => m.id === medicine.id)
+            ? s.medicines.map(m => (m.id === medicine.id ? medicine : m))
+            : [...s.medicines, medicine],
+        })),
+      removeMedicineLocal: medicineId =>
+        set(s => ({ medicines: s.medicines.filter(m => m.id !== medicineId) })),
+      addNotificationLocal: notification =>
+        set(s => (
+          s.notifications.some(n => n.id === notification.id)
+            ? {}
+            : { notifications: [notification, ...s.notifications] }
+        )),
     }),
     {
       name: 'medikit-data',

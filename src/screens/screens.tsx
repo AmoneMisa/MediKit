@@ -6,13 +6,13 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppStore, getMedicineStatus } from '../store';
+import { ensureAuth, createInvite } from '../api';
 import { useAllMedicinesSortedByExpiry, useExpiryLabel } from '../hooks';
 import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { EmptyState, MedicineIcon, WarningBanner } from '../components';
 import type { AppNotification, NotificationType, Medicine, KitAccessRole, MedicineForm } from '../types';
-import { MOCK_ACTIVITY } from '../assets/data/mockData';
 import { useT } from '../i18n';
 
 // ─── NotificationsScreen ──────────────────────────────────────────────────────
@@ -429,18 +429,26 @@ export function ShareKitScreen() {
     setTimeout(() => setLinkCopied(false), 2000);
   }
 
-  function handleInviteByNick() {
+  async function handleInviteByNick() {
     const q = nickInput.replace(/^@/, '').toLowerCase().trim();
     if (!q) return;
-    const found = persons.find(
-      p => p.nickname?.toLowerCase() === q || p.nickname?.toLowerCase() === `@${q}`,
-    );
-    if (!found) {
-      Alert.alert(t('person_not_found'), `@${q}`);
-      return;
+    try {
+      await ensureAuth();
+      await createInvite(kitId, { nickname: q, role: 'viewer' });
+      Alert.alert(t('invite_sent'), `@${q}`);
+      setNickInput('');
+    } catch {
+      // Offline / unknown nickname → fall back to the local contact list.
+      const found = persons.find(
+        p => p.nickname?.toLowerCase() === q || p.nickname?.toLowerCase() === `@${q}`,
+      );
+      if (!found) {
+        Alert.alert(t('person_not_found'), `@${q}`);
+        return;
+      }
+      Alert.alert(t('invite_sent'), `${found.name} (@${found.nickname})`);
+      setNickInput('');
     }
-    Alert.alert(t('invite_sent'), `${found.name} (@${found.nickname})`);
-    setNickInput('');
   }
 
   return (
@@ -584,58 +592,6 @@ export function SyncMembersScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-// ─── ActivityHistoryScreen ───────────────────────────────────────────────────
-
-export function ActivityHistoryScreen() {
-  const route = useRoute<any>();
-  const kitId: string = route.params?.kitId ?? '';
-  const events = MOCK_ACTIVITY.filter(a => a.kitId === kitId);
-  const EVENT_EMOJI: Record<string, string> = {
-    medicine_added: '➕', medicine_removed: '🗑️', quantity_changed: '📦',
-    expiry_updated: '📅', member_joined: '👋', member_left: '🚪', share_created: '↗',
-  };
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}>
-      <FlatList
-        data={events}
-        keyExtractor={e => e.id}
-        contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}
-        ListEmptyComponent={<EmptyState emoji="📋" title="История пуста" />}
-        renderItem={({ item }) => {
-          const ago = useTimeAgoStatic(item.createdAt);
-          return (
-            <View style={{ flexDirection: 'row', marginBottom: Spacing.md }}>
-              <View style={{ alignItems: 'center', marginRight: Spacing.md, width: 40 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center', ...Shadow.sm }}>
-                  <Text style={{ fontSize: 16 }}>{EVENT_EMOJI[item.type] ?? '📝'}</Text>
-                </View>
-                <View style={{ flex: 1, width: 2, backgroundColor: Colors.borderLight, marginTop: 4 }} />
-              </View>
-              <View style={{ flex: 1, backgroundColor: Colors.bgCard, borderRadius: Radius.lg, padding: Spacing.md, ...Shadow.sm }}>
-                <Text style={{ fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.textPrimary }}>{item.userName}</Text>
-                <Text style={{ fontSize: Typography.size.body, color: Colors.textSecondary, marginTop: 2 }}>
-                  {item.medicineName ? `${item.medicineName} ` : ''}{item.detail ?? ''}
-                </Text>
-                <Text style={{ fontSize: Typography.size.xs, color: Colors.textTertiary, marginTop: 6 }}>{ago}</Text>
-              </View>
-            </View>
-          );
-        }}
-      />
-    </SafeAreaView>
-  );
-}
-
-function useTimeAgoStatic(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    const diffDays = Math.floor((Date.now() - date.getTime()) / 86400000);
-    if (diffDays === 0) return 'сегодня';
-    if (diffDays === 1) return 'вчера';
-    return `${diffDays} дн. назад`;
-  } catch { return '—'; }
 }
 
 // ─── CreateEditKitScreen ──────────────────────────────────────────────────────

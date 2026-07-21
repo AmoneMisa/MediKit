@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: medikit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-medikit}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-medikit}
+      POSTGRES_DB: ${PGDATABASE:-medikit}
+    volumes:
+      - medikit-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-medikit} -d ${PGDATABASE:-medikit}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  medikit-server:
+    build: .
+    image: medikit-server:latest
+    container_name: medikit-server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # Publish to localhost only; the host nginx terminates TLS for whiteslove.me
+    # and reverse-proxies to this port (same pattern as the other apps on the host).
+    ports:
+      - "127.0.0.1:${PORT:-4000}:4000"
+    environment:
+      PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # Connect to the Postgres service on the compose network.
+      DATABASE_URL: postgres://${PGUSER:-medikit}:${PGPASSWORD:-medikit}@db:5432/${PGDATABASE:-medikit}
+      # Set to 'false' to disable live openFDA/RxNav lookups (offline deploys).
+      ENABLE_GLOBAL_SOURCES: ${ENABLE_GLOBAL_SOURCES:-true}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  # Persistent Postgres data (users + shared kits + medicines catalog).
+  medikit-pgdata:

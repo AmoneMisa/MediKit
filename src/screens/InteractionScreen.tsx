@@ -3,10 +3,12 @@ import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppStore } from '../store';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
+import { useT } from '../i18n';
 
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
@@ -43,7 +45,6 @@ function makeStyles(C: ColorPalette) {
       padding: Spacing.md, marginTop: Spacing.sm,
       borderWidth: 1.5, borderColor: C.warning,
     },
-    warningEmoji: { fontSize: 22 },
     warningTitle: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.warningDark, marginBottom: 4 },
     warningBody:  { fontSize: Typography.size.body, color: C.warningDark, lineHeight: Typography.size.body * 1.5 },
 
@@ -70,6 +71,7 @@ export function InteractionScreen() {
   const medicine = useAppStore(s => s.getMedicine(medicineId));
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+  const t = useT();
 
   if (!medicine) return null;
 
@@ -79,9 +81,9 @@ export function InteractionScreen() {
 
         {/* Hero */}
         <View style={s.hero}>
-          <Text style={{ fontSize: 44 }}>⚗️</Text>
+          <Icon name="flask" size={44} color={C.dangerDark} />
           <View style={{ flex: 1 }}>
-            <Text style={s.heroTitle}>Совместимость</Text>
+            <Text style={s.heroTitle}>{t('is_compatibility')}</Text>
             <Text style={s.heroSub}>{medicine.name}</Text>
           </View>
         </View>
@@ -89,45 +91,45 @@ export function InteractionScreen() {
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
           <>
             <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>❌ Нельзя принимать вместе</Text>
+              <Text style={s.sectionTitle}>{t('is_cannot_together')}</Text>
             </View>
 
             {medicine.incompatibleWith.map((item, i) => (
               <View key={i} style={s.incompatCard}>
                 <View style={s.incompatIcon}>
-                  <Text style={{ fontSize: 22 }}>🚫</Text>
+                  <Icon name="cancel" size={22} color={C.danger} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.incompatName}>{item}</Text>
                   <Text style={s.incompatReason}>
-                    Одновременный приём может снизить эффективность {medicine.name} или вызвать нежелательные реакции.
+                    {t('is_incompat_reason').replace('{name}', medicine.name)}
                   </Text>
                 </View>
               </View>
             ))}
 
             <View style={s.warningBox}>
-              <Text style={s.warningEmoji}>⚠️</Text>
+              <Icon name="alert" size={22} color={C.warningDark} />
               <View style={{ flex: 1 }}>
-                <Text style={s.warningTitle}>Важно</Text>
+                <Text style={s.warningTitle}>{t('is_important')}</Text>
                 <Text style={s.warningBody}>
-                  Если вы принимаете несколько препаратов одновременно, обязательно проконсультируйтесь с врачом или фармацевтом. Эта информация носит справочный характер.
+                  {t('is_important_body')}
                 </Text>
               </View>
             </View>
           </>
         ) : (
           <View style={s.emptyBox}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>✅</Text>
-            <Text style={s.emptyTitle}>Нет известных противопоказаний</Text>
+            <Icon name="check-circle" size={40} color={C.success} style={{ marginBottom: 12 }} />
+            <Text style={s.emptyTitle}>{t('is_no_contra')}</Text>
             <Text style={s.emptySub}>
-              Для {medicine.name} не зафиксировано серьёзных несовместимостей с другими препаратами.
+              {t('is_no_contra_sub').replace('{name}', medicine.name)}
             </Text>
           </View>
         )}
 
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-          <Text style={s.backBtnText}>← Назад к {medicine.name}</Text>
+          <Text style={s.backBtnText}>{t('is_back_to').replace('{name}', medicine.name)}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

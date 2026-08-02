@@ -194,17 +194,17 @@ export function AllMedicinesScreen() {
           </View>
           <Text style={s.sub}>
             {item.dosage ? `${item.dosage} · ` : ''}
-            {item.remainingQuantity} из {item.totalQuantity}
+            {item.remainingQuantity} {t('shm_share_of')} {item.totalQuantity}
           </Text>
           {kit && (
             <View style={s.kitBadge}>
-              <Text style={{ fontSize: 11 }}>{kit.icon}</Text>
+              <Icon name={kit.icon} size={11} color={kit.colorTag} />
               <Text style={s.kitBadgeText}>{kit.name}</Text>
             </View>
           )}
           {uses > 0 && (
             <View style={s.usageBadge}>
-              <Text style={s.usageBadgeText}>✓ Принято {uses} {uses === 1 ? 'раз' : 'раз'}</Text>
+              <Text style={s.usageBadgeText}>{t('am_taken_count').replace('{count}', String(uses))}</Text>
             </View>
           )}
         </View>

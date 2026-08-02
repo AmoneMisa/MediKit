@@ -1,7 +1,7 @@
 import { request, type ApiUser } from './client';
 import type {
   MedicineKit, KitMember, KitActivityEvent, AppNotification, KitAccessRole, MedicinePrefill,
-  Medicine,
+  Medicine, Doctor, DoctorAppointment,
 } from '../types';
 
 export type { ApiUser };
@@ -205,3 +205,39 @@ export function checkInteractions(items: string[]) {
 }
 
 export type { KitMember };
+
+// ─── Doctors ──────────────────────────────────────────────────────────────────
+
+export function listDoctors() {
+  return request<{ doctors: Doctor[] }>('/doctors').then(r => r.doctors);
+}
+
+export function upsertDoctor(doctor: Doctor) {
+  return request<{ doctor: Doctor }>('/doctors', { method: 'POST', body: doctor }).then(r => r.doctor);
+}
+
+export function patchDoctor(doctorId: string, changes: Partial<Doctor>) {
+  return request<{ doctor: Doctor }>(`/doctors/${doctorId}`, { method: 'PATCH', body: changes }).then(r => r.doctor);
+}
+
+export function deleteDoctor(doctorId: string) {
+  return request<{ ok: true }>(`/doctors/${doctorId}`, { method: 'DELETE' });
+}
+
+// ─── Appointments ─────────────────────────────────────────────────────────────
+
+export function listAppointments() {
+  return request<{ appointments: DoctorAppointment[] }>('/appointments').then(r => r.appointments);
+}
+
+export function upsertAppointment(appt: DoctorAppointment) {
+  return request<{ appointment: DoctorAppointment }>('/appointments', { method: 'POST', body: appt }).then(r => r.appointment);
+}
+
+export function patchAppointment(apptId: string, changes: Partial<DoctorAppointment>) {
+  return request<{ appointment: DoctorAppointment }>(`/appointments/${apptId}`, { method: 'PATCH', body: changes }).then(r => r.appointment);
+}
+
+export function deleteAppointment(apptId: string) {
+  return request<{ ok: true }>(`/appointments/${apptId}`, { method: 'DELETE' });
+}

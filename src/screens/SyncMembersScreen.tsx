@@ -5,19 +5,13 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute } from '@react-navigation/native';
+import { useT } from '../i18n';
 import { useAppStore } from '../store';
 import { ensureAuth, setMemberRole, removeMember, createInvite } from '../api';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import type { KitAccessRole, KitMember } from '../types';
-
-const ROLE_LABELS: Record<KitAccessRole, string> = {
-  owner:  'Владелец',
-  editor: 'Редактор',
-  viewer: 'Просмотр',
-  synced: 'Полный синк',
-};
 
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
@@ -88,6 +82,14 @@ export function SyncMembersScreen() {
   const { kitId } = route.params;
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+  const t = useT();
+
+  const ROLE_LABELS: Record<KitAccessRole, string> = {
+    owner:  t('sm_role_owner'),
+    editor: t('sm_role_editor'),
+    viewer: t('sm_role_viewer'),
+    synced: t('sm_role_synced'),
+  };
 
   // Role colours defined inside component so they use current theme
   const ROLE_COLORS: Record<KitAccessRole, { bg: string; text: string }> = useMemo(() => ({
@@ -114,12 +116,12 @@ export function SyncMembersScreen() {
     const currentIdx = roles.indexOf(member.role);
     const nextRole   = roles[(currentIdx + 1) % roles.length];
     Alert.alert(
-      'Изменить роль',
-      `Назначить «${member.name}» роль: ${ROLE_LABELS[nextRole]}?`,
+      t('sm_change_role'),
+      `${t('sm_assign_prefix')}«${member.name}»${t('sm_assign_role_infix')}${ROLE_LABELS[nextRole]}?`,
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Изменить',
+          text: t('edit'),
           onPress: async () => {
             // Optimistic local change, then reconcile with the server response.
             const newMembers = kit.members.map(m =>
@@ -139,12 +141,12 @@ export function SyncMembersScreen() {
 
   function handleRevoke(member: KitMember) {
     Alert.alert(
-      'Удалить участника',
-      `Убрать «${member.name}» из аптечки?`,
+      t('sm_remove_member'),
+      `${t('sm_remove_prefix')}«${member.name}»${t('sm_remove_suffix')}`,
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Удалить', style: 'destructive',
+          text: t('delete'), style: 'destructive',
           onPress: async () => {
             const newMembers = kit.members.filter(m => m.userId !== member.userId);
             updateKit(kitId, { members: newMembers });
@@ -168,7 +170,7 @@ export function SyncMembersScreen() {
       const invite = await createInvite(kitId, { email, role: 'viewer' });
       link = invite.link;
     } catch { /* offline → fall back to a static share link */ }
-    await Share.share({ message: `Приглашение в аптечку «${kit.name}»: ${link}` });
+    await Share.share({ message: `${t('sm_invite_message_prefix')}«${kit.name}»: ${link}` });
     setInviteEmail('');
   }
 
@@ -182,13 +184,13 @@ export function SyncMembersScreen() {
           <>
             <View style={s.infoBanner}>
               <Text style={s.infoText}>
-                🔄 Участники с полным синком видят все изменения в реальном времени
+                🔄 {t('sm_info_banner')}
               </Text>
             </View>
 
             {isOwner && (
               <View style={s.inviteCard}>
-                <Text style={s.inviteTitle}>Пригласить участника</Text>
+                <Text style={s.inviteTitle}>{t('sm_invite_member')}</Text>
                 <View style={s.inviteRow}>
                   <TextInput
                     style={s.inviteInput}
@@ -206,7 +208,7 @@ export function SyncMembersScreen() {
               </View>
             )}
 
-            <Text style={s.sectionTitle}>Участники ({kit.members.length})</Text>
+            <Text style={s.sectionTitle}>{t('members')} ({kit.members.length})</Text>
           </>
         }
         renderItem={({ item }) => {
@@ -227,9 +229,9 @@ export function SyncMembersScreen() {
                       item.syncStatus === 'failed'  ? C.danger  : C.textTertiary,
                   }]} />
                   <Text style={s.memberSub}>
-                    {item.syncStatus === 'active'       ? 'Активен' :
-                     item.syncStatus === 'pending'      ? 'Ожидает принятия' :
-                     item.syncStatus === 'disconnected' ? 'Отключён' : 'Ошибка'}
+                    {item.syncStatus === 'active'       ? t('sm_status_active') :
+                     item.syncStatus === 'pending'      ? t('sm_status_pending') :
+                     item.syncStatus === 'disconnected' ? t('sm_status_disconnected') : t('sm_status_failed')}
                   </Text>
                 </View>
               </View>
@@ -253,16 +255,16 @@ export function SyncMembersScreen() {
         }}
         ListFooterComponent={
           <View style={s.legend}>
-            <Text style={s.legendTitle}>Уровни доступа</Text>
+            <Text style={s.legendTitle}>{t('sm_access_levels')}</Text>
             {(Object.entries(ROLE_LABELS) as [KitAccessRole, string][]).map(([role, label]) => (
               <View key={role} style={s.legendRow}>
                 <View style={[s.legendDot, { backgroundColor: ROLE_COLORS[role].bg }]} />
                 <Text style={s.legendLabel}>
                   <Text style={{ fontWeight: '700' }}>{label}</Text>
-                  {role === 'viewer' ? ' — только просмотр' :
-                   role === 'editor' ? ' — может добавлять и редактировать' :
-                   role === 'synced' ? ' — полная синхронизация в реальном времени' :
-                   ' — полный контроль'}
+                  {role === 'viewer' ? t('sm_legend_viewer') :
+                   role === 'editor' ? t('sm_legend_editor') :
+                   role === 'synced' ? t('sm_legend_synced') :
+                   t('sm_legend_owner')}
                 </Text>
               </View>
             ))}

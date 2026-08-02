@@ -160,6 +160,8 @@ export async function initDb(): Promise<void> {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google ON users(google_id) WHERE google_id IS NOT NULL;
 
+    ALTER TABLE kit_medicines ADD COLUMN IF NOT EXISTS color_tag TEXT;
+
     CREATE INDEX IF NOT EXISTS idx_members_user  ON kit_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_activity_kit  ON activity(kit_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_notif_user    ON notifications(user_id, created_at);
@@ -168,5 +170,70 @@ export async function initDb(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_catalog_blob  ON medicines_catalog(search_blob);
     CREATE INDEX IF NOT EXISTS idx_interactions_a ON medicine_interactions(ingredient_a);
     CREATE INDEX IF NOT EXISTS idx_interactions_b ON medicine_interactions(ingredient_b);
+
+    -- Doctors / healthcare providers stored per user.
+    CREATE TABLE IF NOT EXISTS doctors (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name        TEXT NOT NULL,
+      speciality  TEXT NOT NULL,
+      phone       TEXT,
+      email       TEXT,
+      address     TEXT,
+      city        TEXT,
+      country     TEXT,
+      languages   JSONB,
+      is_free     BOOLEAN,
+      cost        TEXT,
+      whatsapp    TEXT,
+      telegram    TEXT,
+      viber       TEXT,
+      photo_uri   TEXT,
+      notes       TEXT,
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_doctors_user ON doctors(user_id);
+
+    -- Doctor appointments (calendar visits, prescriptions, analyses).
+    CREATE TABLE IF NOT EXISTS appointments (
+      id                   TEXT PRIMARY KEY,
+      user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      doctor_id            TEXT NOT NULL,
+      date_time            TEXT NOT NULL,
+      is_online            BOOLEAN NOT NULL DEFAULT FALSE,
+      meet_link            TEXT,
+      address              TEXT,
+      description          TEXT,
+      questions_for_doctor TEXT,
+      analyses             JSONB,
+      prescriptions        JSONB,
+      notes                TEXT,
+      status               TEXT NOT NULL DEFAULT 'upcoming',
+      calendar_event_id    TEXT,
+      created_at           TEXT NOT NULL,
+      updated_at           TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_appointments_user   ON appointments(user_id);
+    CREATE INDEX IF NOT EXISTS idx_appointments_doctor ON appointments(user_id, doctor_id);
+
+    -- JWT revocation: rows expire when the token itself expires (30 d).
+    CREATE TABLE IF NOT EXISTS token_blocklist (
+      jti        TEXT PRIMARY KEY,
+      expires_at TEXT NOT NULL     -- ISO timestamp; row can be purged after this
+    );
+    CREATE INDEX IF NOT EXISTS idx_blocklist_exp ON token_blocklist(expires_at);
   `);
+
+  // Purge expired blocklist entries once per hour so the table stays small.
+  setInterval(async () => {
+    try {
+      await pool.query(
+        'DELETE FROM token_blocklist WHERE expires_at < $1',
+        [new Date().toISOString()],
+      );
+    } catch { /* best-effort */ }
+  }, 60 * 60 * 1000);
 }

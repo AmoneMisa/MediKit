@@ -12,17 +12,18 @@ import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { EmptyState, MedicineIcon, WarningBanner } from '../components';
+import { HueSlider } from '../components/HueSlider';
 import type { AppNotification, NotificationType, Medicine, KitAccessRole, MedicineForm } from '../types';
 import { useT } from '../i18n';
 
 // ─── NotificationsScreen ──────────────────────────────────────────────────────
 
-const NOTIF_CFG: Record<NotificationType, { emoji: string; dot: string }> = {
-  expired:             { emoji: '🔴', dot: Colors.danger },
-  expiring_soon:       { emoji: '🟡', dot: Colors.warning },
-  low_stock:           { emoji: '📦', dot: Colors.warning },
-  interaction_warning: { emoji: '⚠️', dot: Colors.danger },
-  kit_update:          { emoji: '🔄', dot: Colors.blue },
+const NOTIF_CFG: Record<NotificationType, { icon: string; iconColor: string; dot: string }> = {
+  expired:             { icon: 'alert-circle',   iconColor: Colors.danger,  dot: Colors.danger },
+  expiring_soon:       { icon: 'alert-circle',   iconColor: Colors.warning, dot: Colors.warning },
+  low_stock:           { icon: 'package-variant', iconColor: Colors.warning, dot: Colors.warning },
+  interaction_warning: { icon: 'alert',           iconColor: Colors.danger,  dot: Colors.danger },
+  kit_update:          { icon: 'sync',            iconColor: Colors.blue,    dot: Colors.blue },
 };
 
 export function NotificationsScreen() {
@@ -31,29 +32,33 @@ export function NotificationsScreen() {
   const markAll = useAppStore(s => s.markAllNotificationsRead);
   const dismiss = useAppStore(s => s.dismissNotification);
   const unread = notifications.filter(n => !n.isRead).length;
+  const t = useT();
 
   return (
     <SafeAreaView style={ns.root}>
       <View style={ns.header}>
-        <Text style={ns.title}>Уведомления</Text>
-        {unread > 0 && <TouchableOpacity onPress={markAll}><Text style={ns.markAll}>Прочитать все</Text></TouchableOpacity>}
+        <Text style={ns.title}>{t('notifications')}</Text>
+        {unread > 0 && <TouchableOpacity onPress={markAll}><Text style={ns.markAll}>{t('mark_all_read')}</Text></TouchableOpacity>}
       </View>
       <FlatList
         data={notifications}
         keyExtractor={n => n.id}
         contentContainerStyle={ns.list}
-        ListEmptyComponent={<EmptyState emoji="🔔" title="Нет уведомлений" subtitle="Всё под контролем" />}
+        ListEmptyComponent={<EmptyState iconName="bell" title={t('no_notifications')} subtitle={t('no_notifications_sub')} />}
         renderItem={({ item }: { item: AppNotification }) => {
           const cfg = NOTIF_CFG[item.type] ?? NOTIF_CFG.kit_update;
           return (
             <TouchableOpacity style={[ns.card, item.isRead && ns.cardRead]} onPress={() => markRead(item.id)} activeOpacity={0.85}>
               <View style={[ns.dot, { backgroundColor: cfg.dot, opacity: item.isRead ? 0.3 : 1 }]} />
               <View style={{ flex: 1 }}>
-                <Text style={[ns.notifTitle, item.isRead && { fontWeight: '400' as any }]}>{cfg.emoji} {item.title}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name={cfg.icon} size={16} color={cfg.iconColor} />
+                  <Text style={[ns.notifTitle, item.isRead && { fontWeight: '400' as any }]}>{item.title}</Text>
+                </View>
                 <Text style={ns.notifSub}>{item.body}</Text>
               </View>
               <TouchableOpacity onPress={() => dismiss(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ fontSize: 14, color: Colors.textTertiary }}>✕</Text>
+                <Icon name="close" size={14} color={Colors.textTertiary} />
               </TouchableOpacity>
             </TouchableOpacity>
           );
@@ -80,6 +85,7 @@ const ns = StyleSheet.create({
 
 export function ExpiryScreen() {
   const navigation = useNavigation<any>();
+  const t = useT();
   const medicines = useAllMedicinesSortedByExpiry();
   const expired = medicines.filter(m => getMedicineStatus(m) === 'expired');
   const expiring = medicines.filter(m => getMedicineStatus(m) === 'expiring_soon');
@@ -89,10 +95,13 @@ export function ExpiryScreen() {
   return (
     <SafeAreaView style={es.root}>
       <View style={es.headerWrap}>
-        <Text style={es.title}>Сроки годности</Text>
+        <Text style={es.title}>{t('expiry_title')}</Text>
         {expired.length > 0 && (
           <View style={es.alertBanner}>
-            <Text style={es.alertText}>❌ {expired.length} просрочен{expired.length > 1 ? 'ы' : ''} — замените</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="close-circle" size={16} color={Colors.dangerDark} />
+              <Text style={es.alertText}>{expired.length} {t('pf_expired_count_replace')}</Text>
+            </View>
           </View>
         )}
       </View>
@@ -100,7 +109,7 @@ export function ExpiryScreen() {
         data={sorted}
         keyExtractor={m => m.id}
         contentContainerStyle={es.list}
-        ListEmptyComponent={<EmptyState emoji="✅" title="Все препараты в порядке" />}
+        ListEmptyComponent={<EmptyState iconName="check-circle" title={t('pf_all_medicines_ok')} />}
         renderItem={({ item }: { item: Medicine }) => <ExpiryRow medicine={item} onPress={() => navigation.navigate('MedicineDetail', { medicineId: item.id, kitId: item.kitId })} />}
       />
     </SafeAreaView>
@@ -108,6 +117,7 @@ export function ExpiryScreen() {
 }
 
 function ExpiryRow({ medicine, onPress }: { medicine: Medicine; onPress: () => void }) {
+  const t = useT();
   const expiry = useExpiryLabel(medicine.expirationDate);
   const status = getMedicineStatus(medicine);
   const daysLeft = Math.max(0, Math.floor((new Date(medicine.expirationDate).getTime() - Date.now()) / 86400000));
@@ -117,7 +127,11 @@ function ExpiryRow({ medicine, onPress }: { medicine: Medicine; onPress: () => v
   return (
     <TouchableOpacity style={es.row} onPress={onPress} activeOpacity={0.85}>
       <View style={[es.iconWrap, { backgroundColor: iconBg }]}>
-        <Text style={{ fontSize: 20 }}>{status === 'expired' ? '❌' : status === 'expiring_soon' ? '⚠️' : '✅'}</Text>
+        <Icon
+          name={status === 'expired' ? 'close-circle' : status === 'expiring_soon' ? 'alert' : 'check-circle'}
+          size={20}
+          color={barColor}
+        />
       </View>
       <View style={es.info}>
         <Text style={es.medName}>{medicine.name}</Text>
@@ -125,7 +139,7 @@ function ExpiryRow({ medicine, onPress }: { medicine: Medicine; onPress: () => v
         <View style={es.bar}><View style={[es.barFill, { width: `${pct}%` as any, backgroundColor: barColor }]} /></View>
       </View>
       <View style={[es.qty, { backgroundColor: iconBg }]}>
-        <Text style={[es.qtyText, { color: barColor }]}>{medicine.remainingQuantity} шт</Text>
+        <Text style={[es.qtyText, { color: barColor }]}>{medicine.remainingQuantity} {t('pf_units')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -155,20 +169,21 @@ export function AddMedicineScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const kitId: string = route.params?.kitId ?? 'kit-1';
+  const t = useT();
 
   const OPTIONS = [
-    { emoji: '📷', bg: '#C8E8FF', title: 'Сканировать упаковку', subtitle: 'Штрих-код или фото', onPress: () => Alert.alert('Скоро', 'Функция в разработке') },
-    { emoji: '✏️', bg: '#C8FFD8', title: 'Ввести вручную', subtitle: 'Название, форма, количество, срок', onPress: () => navigation.navigate('ManualEntry', { kitId }) },
+    { icon: 'camera', bg: '#C8E8FF', title: t('scan_package'), subtitle: t('pf_barcode_or_photo'), onPress: () => Alert.alert(t('pf_coming_soon'), t('pf_feature_in_development')) },
+    { icon: 'pencil', bg: '#C8FFD8', title: t('enter_manually'), subtitle: t('pf_manual_entry_subtitle'), onPress: () => navigation.navigate('ManualEntry', { kitId }) },
   ];
 
   return (
     <SafeAreaView style={as.root}>
       <ScrollView contentContainerStyle={as.scroll}>
-        <Text style={as.title}>Добавить препарат</Text>
-        <Text style={as.sub}>Выберите способ добавления</Text>
+        <Text style={as.title}>{t('add_medicine')}</Text>
+        <Text style={as.sub}>{t('pf_choose_add_method')}</Text>
         {OPTIONS.map(o => (
           <TouchableOpacity key={o.title} style={as.option} onPress={o.onPress} activeOpacity={0.85}>
-            <View style={[as.optIcon, { backgroundColor: o.bg }]}><Text style={{ fontSize: 24 }}>{o.emoji}</Text></View>
+            <View style={[as.optIcon, { backgroundColor: o.bg }]}><Icon name={o.icon} size={24} color={Colors.textPrimary} /></View>
             <View style={{ flex: 1 }}>
               <Text style={as.optTitle}>{o.title}</Text>
               <Text style={as.optSub}>{o.subtitle}</Text>
@@ -195,13 +210,13 @@ const as = StyleSheet.create({
 
 // ─── ManualEntryScreen ────────────────────────────────────────────────────────
 
-const FORMS: { value: MedicineForm; label: string; emoji: string }[] = [
-  { value: 'tablets', label: 'Таблетки', emoji: '💊' },
-  { value: 'capsules', label: 'Капсулы', emoji: '💊' },
-  { value: 'syrup', label: 'Сироп', emoji: '🍯' },
-  { value: 'spray', label: 'Спрей', emoji: '💨' },
-  { value: 'drops', label: 'Капли', emoji: '💧' },
-  { value: 'other', label: 'Другое', emoji: '🩺' },
+const FORMS: { value: MedicineForm; labelKey: string; icon: string }[] = [
+  { value: 'tablets',  labelKey: 'pf_form_tablets',  icon: 'pill' },
+  { value: 'capsules', labelKey: 'pf_form_capsules', icon: 'pill' },
+  { value: 'syrup',    labelKey: 'pf_form_syrup',    icon: 'bottle-tonic' },
+  { value: 'spray',    labelKey: 'pf_form_spray',    icon: 'spray' },
+  { value: 'drops',    labelKey: 'pf_form_drops',    icon: 'water' },
+  { value: 'other',    labelKey: 'pf_form_other',    icon: 'stethoscope' },
 ];
 
 export function ManualEntryScreen() {
@@ -210,6 +225,7 @@ export function ManualEntryScreen() {
   const kitId: string = route.params?.kitId ?? 'kit-1';
   const addMedicine = useAppStore(s => s.addMedicine);
   const kits = useAppStore(s => s.kits);
+  const t = useT();
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
   const [form, setForm] = useState<MedicineForm>('tablets');
@@ -220,8 +236,8 @@ export function ManualEntryScreen() {
   const [selectedKitId, setSelectedKitId] = useState(kitId);
 
   function handleSave() {
-    if (!name.trim()) { Alert.alert('Укажите название'); return; }
-    if (!expiryDate.match(/^\d{4}-\d{2}-\d{2}$/)) { Alert.alert('Формат даты: ГГГГ-ММ-ДД'); return; }
+    if (!name.trim()) { Alert.alert(t('pf_enter_name')); return; }
+    if (!expiryDate.match(/^\d{4}-\d{2}-\d{2}$/)) { Alert.alert(t('pf_date_format')); return; }
     const total = parseInt(totalQty, 10) || 1;
     const remaining = Math.min(parseInt(remainingQty, 10) || total, total);
     const now = new Date().toISOString();
@@ -237,48 +253,51 @@ export function ManualEntryScreen() {
   return (
     <SafeAreaView style={me.root}>
       <ScrollView contentContainerStyle={me.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={me.sec}>Основное</Text>
+        <Text style={me.sec}>{t('pf_section_main')}</Text>
         <View style={me.card}>
-          <MeField label="Название *" placeholder="Амброксол" value={name} onChange={setName} />
-          <MeField label="Дозировка" placeholder="30 мг" value={dosage} onChange={setDosage} />
+          <MeField label={t('pf_field_name')} placeholder={t('pf_name_placeholder')} value={name} onChange={setName} />
+          <MeField label={t('pf_field_dosage')} placeholder={t('pf_dosage_placeholder')} value={dosage} onChange={setDosage} />
         </View>
 
-        <Text style={me.sec}>Форма</Text>
+        <Text style={me.sec}>{t('pf_section_form')}</Text>
         <View style={[me.card, { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }]}>
           {FORMS.map(f => (
             <TouchableOpacity key={f.value} style={[me.formPill, form === f.value && me.formPillActive]} onPress={() => setForm(f.value)} activeOpacity={0.8}>
-              <Text style={{ fontSize: 16 }}>{f.emoji}</Text>
-              <Text style={[me.formPillText, form === f.value && { color: Colors.white }]}>{f.label}</Text>
+              <Icon name={f.icon} size={16} color={form === f.value ? Colors.white : Colors.textSecondary} />
+              <Text style={[me.formPillText, form === f.value && { color: Colors.white }]}>{t(f.labelKey as any)}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={me.sec}>Количество и срок</Text>
+        <Text style={me.sec}>{t('pf_section_qty_expiry')}</Text>
         <View style={me.card}>
           <View style={{ flexDirection: 'row', gap: Spacing.md }}>
-            <View style={{ flex: 1 }}><MeField label="Всего в уп." placeholder="20" value={totalQty} onChange={setTotalQty} keyboard="number-pad" /></View>
-            <View style={{ flex: 1 }}><MeField label="Осталось" placeholder="12" value={remainingQty} onChange={setRemainingQty} keyboard="number-pad" /></View>
+            <View style={{ flex: 1 }}><MeField label={t('pf_field_total_in_pack')} placeholder="20" value={totalQty} onChange={setTotalQty} keyboard="number-pad" /></View>
+            <View style={{ flex: 1 }}><MeField label={t('pf_field_remaining')} placeholder="12" value={remainingQty} onChange={setRemainingQty} keyboard="number-pad" /></View>
           </View>
-          <MeField label="Срок годности *" placeholder="2026-06-12" value={expiryDate} onChange={setExpiryDate} />
+          <MeField label={t('pf_field_expiry')} placeholder="2026-06-12" value={expiryDate} onChange={setExpiryDate} />
         </View>
 
-        <Text style={me.sec}>Заметки</Text>
+        <Text style={me.sec}>{t('pf_section_notes')}</Text>
         <View style={me.card}>
-          <MeField label="Заметки" placeholder="Хранить при t° до 25°C…" value={notes} onChange={setNotes} multi />
+          <MeField label={t('pf_field_notes')} placeholder={t('pf_notes_placeholder')} value={notes} onChange={setNotes} multi />
         </View>
 
-        <Text style={me.sec}>Аптечка</Text>
+        <Text style={me.sec}>{t('kit_label')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg }}>
           {kits.map(k => (
             <TouchableOpacity key={k.id} style={[me.kitChip, selectedKitId === k.id && me.kitChipActive]} onPress={() => setSelectedKitId(k.id)} activeOpacity={0.8}>
-              <Text style={{ fontSize: 16 }}>{k.icon}</Text>
+              <Icon name={k.icon} size={16} color={k.colorTag} />
               <Text style={[me.kitChipText, selectedKitId === k.id && { color: Colors.blueDark }]}>{k.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <TouchableOpacity style={me.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={me.saveBtnText}>💾 Сохранить</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name="content-save" size={18} color={Colors.white} />
+            <Text style={me.saveBtnText}>{t('save')}</Text>
+          </View>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -329,8 +348,8 @@ const me = StyleSheet.create({
 let QRCode: any = null;
 try { QRCode = require('react-native-qrcode-svg').default; } catch {}
 
-const ROLE_LABELS: Record<KitAccessRole, string> = {
-  owner: 'Владелец', editor: 'Редактор', viewer: 'Просмотр', synced: 'Синк',
+const ROLE_LABEL_KEYS: Record<KitAccessRole, string> = {
+  owner: 'pf_role_owner', editor: 'pf_role_editor', viewer: 'pf_role_viewer', synced: 'pf_role_synced',
 };
 
 function makeShareKitStyles(C: ColorPalette) {
@@ -406,7 +425,7 @@ export function ShareKitScreen() {
 
   if (!kit) return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPage }}>
-      <Text style={{ padding: 20, color: C.textPrimary }}>Аптечка не найдена</Text>
+      <Text style={{ padding: 20, color: C.textPrimary }}>{t('kit_not_found')}</Text>
     </SafeAreaView>
   );
 
@@ -461,26 +480,26 @@ export function ShareKitScreen() {
             <QRCode value={shareUrl} size={130} backgroundColor="transparent" color={C.blueDark} />
           ) : (
             <View style={sk.qrPlaceholder}>
-              <Text style={{ fontSize: 36 }}>🔲</Text>
-              <Text style={sk.qrHint}>QR-код</Text>
+              <Icon name="qrcode" size={36} color={C.textTertiary} />
+              <Text style={sk.qrHint}>{t('sc_qr_code')}</Text>
             </View>
           )}
           <Text style={sk.kitName}>{kit.icon} {kit.name}</Text>
-          <Text style={sk.kitSub}>{kit.members.length} участник{kit.members.length !== 1 ? 'а' : ''}</Text>
+          <Text style={sk.kitSub}>{kit.members.length} {t('pf_members_word')}</Text>
           <Text style={sk.shareUrlText} numberOfLines={1}>{shareUrl}</Text>
         </View>
 
         {/* ── Share buttons ── */}
         <TouchableOpacity style={[sk.shareBtn, sk.tgBtn]} onPress={() => handleShareApp('telegram')} activeOpacity={0.85}>
-          <Text style={{ fontSize: 20 }}>✈️</Text>
+          <Icon name="send" size={20} color="#fff" />
           <Text style={sk.shareBtnText}>{t('share_telegram')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[sk.shareBtn, sk.waBtn]} onPress={() => handleShareApp('whatsapp')} activeOpacity={0.85}>
-          <Text style={{ fontSize: 20 }}>💬</Text>
+          <Icon name="message" size={20} color="#fff" />
           <Text style={sk.shareBtnText}>{t('share_whatsapp')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[sk.shareBtn, sk.copyBtn]} onPress={handleCopyLink} activeOpacity={0.85}>
-          <Text style={{ fontSize: 20 }}>{linkCopied ? '✅' : '🔗'}</Text>
+          <Icon name={linkCopied ? 'check' : 'link'} size={20} color={C.blue} />
           <Text style={[sk.shareBtnText, { color: C.blue }]}>
             {linkCopied ? t('link_copied') : t('copy_link')}
           </Text>
@@ -489,7 +508,7 @@ export function ShareKitScreen() {
         {/* ── Invite by nickname ── */}
         <View style={sk.card}>
           <Text style={sk.cardTitle}>{t('invite_nickname')}</Text>
-          <Text style={sk.cardSub}>Пользователь должен быть у вас в контактах</Text>
+          <Text style={sk.cardSub}>{t('pf_user_must_be_contact')}</Text>
           <View style={sk.nickRow}>
             <TextInput
               style={sk.nickInput}
@@ -548,7 +567,7 @@ export function ShareKitScreen() {
                 <Text style={[sk.roleText, {
                   color: m.role === 'owner' ? C.blueDark : C.successDark,
                 }]}>
-                  {ROLE_LABELS[m.role]}
+                  {t(ROLE_LABEL_KEYS[m.role] as any)}
                 </Text>
               </View>
             </View>
@@ -566,12 +585,13 @@ export function SyncMembersScreen() {
   const route = useRoute<any>();
   const kitId = route.params?.kitId ?? '';
   const kit = useAppStore(s => s.getKit(kitId));
-  if (!kit) return <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}><Text style={{ padding: 20 }}>Не найдено</Text></SafeAreaView>;
+  const t = useT();
+  if (!kit) return <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}><Text style={{ padding: 20 }}>{t('pf_not_found')}</Text></SafeAreaView>;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}>
       <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
         <Text style={{ fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: Colors.textPrimary, marginBottom: Spacing.lg }}>
-          Участники аптечки
+          {t('pf_kit_members')}
         </Text>
         {kit.members.map(m => (
           <View key={m.userId} style={{ backgroundColor: Colors.bgCard, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, ...Shadow.card }}>
@@ -580,11 +600,14 @@ export function SyncMembersScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary }}>{m.name}</Text>
-              <Text style={{ fontSize: Typography.size.xs, color: Colors.textSecondary }}>{m.syncStatus === 'active' ? '🟢 Активен' : '🔴 Отключён'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Icon name="circle" size={10} color={m.syncStatus === 'active' ? Colors.success : Colors.danger} />
+                <Text style={{ fontSize: Typography.size.xs, color: Colors.textSecondary }}>{m.syncStatus === 'active' ? t('pf_status_active') : t('pf_status_disabled')}</Text>
+              </View>
             </View>
             <View style={{ backgroundColor: Colors.blueLight, paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.pill }}>
               <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: Colors.blueDark }}>
-                {{ owner: 'Владелец', editor: 'Редактор', viewer: 'Просмотр', synced: 'Синк' }[m.role]}
+                {t(ROLE_LABEL_KEYS[m.role] as any)}
               </Text>
             </View>
           </View>
@@ -596,7 +619,7 @@ export function SyncMembersScreen() {
 
 // ─── CreateEditKitScreen ──────────────────────────────────────────────────────
 
-const ICONS_LIST = ['🏡', '🏠', '👨‍👩‍👧', '🌿', '🚗', '🏖', '💼', '⛺️', '🏥', '🧳'];
+const ICONS_LIST = ['home', 'home-outline', 'account-group', 'leaf', 'car', 'umbrella', 'briefcase', 'tent', 'hospital-box', 'bag-suitcase'];
 const COLORS_LIST = ['#A0CEFF', '#78A9FF', '#FFB347', '#56CE53', '#FF7575', '#A080FF', '#FF775C', '#47C8FF', '#FFCF47', '#80D8B0'];
 
 export function CreateEditKitScreen() {
@@ -608,9 +631,10 @@ export function CreateEditKitScreen() {
   const updateKit = useAppStore(s => s.updateKit);
   const deleteKit = useAppStore(s => s.deleteKit);
   const user = useAppStore(s => s.user);
+  const t = useT();
   const [name, setName] = useState(existingKit?.name ?? '');
   const [description, setDescription] = useState(existingKit?.description ?? '');
-  const [icon, setIcon] = useState(existingKit?.icon ?? '🏡');
+  const [icon, setIcon] = useState(existingKit?.icon ?? 'home');
   const [colorTag, setColorTag] = useState(existingKit?.colorTag ?? Colors.blue);
   const [isPrivate, setIsPrivate] = useState(existingKit?.isPrivate ?? true);
   const isEditing = !!kitId;
@@ -637,7 +661,7 @@ export function CreateEditKitScreen() {
     <SafeAreaView style={ck.root}>
       <ScrollView contentContainerStyle={ck.scroll} keyboardShouldPersistTaps="handled">
         <View style={[ck.preview, { backgroundColor: colorTag + '22', borderColor: colorTag + '66' }]}>
-          <Text style={{ fontSize: 52, marginBottom: Spacing.sm }}>{icon}</Text>
+          <Icon name={icon} size={52} color={colorTag} style={{ marginBottom: Spacing.sm }} />
           <Text style={ck.previewName}>{name || 'Название аптечки'}</Text>
         </View>
         <Text style={ck.sec}>Название *</Text>
@@ -648,7 +672,7 @@ export function CreateEditKitScreen() {
         <View style={[ck.card, { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }]}>
           {ICONS_LIST.map(ic => (
             <TouchableOpacity key={ic} style={[ck.iconOpt, icon === ic && { borderColor: colorTag, borderWidth: 2.5 }]} onPress={() => setIcon(ic)} activeOpacity={0.8}>
-              <Text style={{ fontSize: 24 }}>{ic}</Text>
+              <Icon name={ic} size={26} color={icon === ic ? colorTag : Colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
@@ -660,17 +684,24 @@ export function CreateEditKitScreen() {
         </View>
         <View style={[ck.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
           <View>
-            <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary }}>🔒 Личная аптечка</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="lock" size={16} color={Colors.textPrimary} />
+              <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary }}>Личная аптечка</Text>
+            </View>
             <Text style={{ fontSize: Typography.size.body, color: Colors.textSecondary, marginTop: 2 }}>Только вы можете видеть</Text>
           </View>
           <Switch value={isPrivate} onValueChange={setIsPrivate} trackColor={{ true: Colors.blue, false: Colors.border }} thumbColor={Colors.white} />
         </View>
         <TouchableOpacity style={ck.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={ck.saveBtnText}>{isEditing ? '💾 Сохранить' : '✅ Создать аптечку'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name={isEditing ? 'content-save' : 'check-circle'} size={18} color={Colors.white} />
+            <Text style={ck.saveBtnText}>{isEditing ? 'Сохранить' : 'Создать аптечку'}</Text>
+          </View>
         </TouchableOpacity>
         {isEditing && (
-          <TouchableOpacity style={{ padding: Spacing.lg, alignItems: 'center' }} onPress={handleDelete} activeOpacity={0.8}>
-            <Text style={{ fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: Colors.danger }}>🗑️ Удалить аптечку</Text>
+          <TouchableOpacity style={{ padding: Spacing.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }} onPress={handleDelete} activeOpacity={0.8}>
+            <Icon name="trash-can" size={16} color={Colors.danger} />
+            <Text style={{ fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: Colors.danger }}>Удалить аптечку</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -703,7 +734,7 @@ export function InteractionScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}>
       <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}>
         <View style={{ backgroundColor: Colors.dangerLight, borderRadius: Radius.xl, padding: Spacing.lg, flexDirection: 'row', alignItems: 'center', gap: Spacing.lg, marginBottom: Spacing.lg }}>
-          <Text style={{ fontSize: 44 }}>⚗️</Text>
+          <Icon name="flask" size={44} color={Colors.dangerDark} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: Colors.dangerDark }}>Совместимость</Text>
             <Text style={{ fontSize: Typography.size.body, color: Colors.dangerDark, marginTop: 2 }}>{medicine.name}</Text>
@@ -713,7 +744,7 @@ export function InteractionScreen() {
           medicine.incompatibleWith.map((item, i) => (
             <View key={i} style={{ backgroundColor: Colors.bgCard, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, borderLeftWidth: 4, borderLeftColor: Colors.danger, ...Shadow.card }}>
               <View style={{ width: 40, height: 40, borderRadius: Radius.sm, backgroundColor: Colors.dangerLight, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 22 }}>🚫</Text>
+                <Icon name="cancel" size={22} color={Colors.danger} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary, marginBottom: 4 }}>{item}</Text>
@@ -723,7 +754,7 @@ export function InteractionScreen() {
           ))
         ) : (
           <View style={{ alignItems: 'center', padding: Spacing.xxxl, backgroundColor: Colors.bgCard, borderRadius: Radius.xl, ...Shadow.card }}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>✅</Text>
+            <Icon name="check-circle" size={40} color={Colors.success} style={{ marginBottom: 12 }} />
             <Text style={{ fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.textPrimary }}>Нет противопоказаний</Text>
           </View>
         )}
@@ -767,6 +798,7 @@ export function ProfileScreen() {
   const navigation  = useNavigation<any>();
   const C           = useColors();
   const ps          = useMemo(() => makeProfileStyles(C), [C]);
+  const t           = useT();
   const user        = useAppStore(s => s.user);
   const updateUser  = useAppStore(s => s.updateUser);
   const kits        = useAppStore(s => s.kits);
@@ -787,10 +819,10 @@ export function ProfileScreen() {
         surname: apiUser.surname, email: apiUser.email,
         avatarInitials: apiUser.avatarInitials, googleLinked: true,
       });
-      Alert.alert('Google подключён', 'Аккаунт защищён — данные восстановятся на других устройствах.');
+      Alert.alert(t('pf_google_linked'), t('pf_google_linked_msg'));
     } catch (e) {
       if (e instanceof GoogleCancelled) return; // user backed out — no error
-      Alert.alert('Не удалось войти через Google', e instanceof Error ? e.message : 'Попробуйте ещё раз.');
+      Alert.alert(t('pf_google_failed'), e instanceof Error ? e.message : t('pf_try_again'));
     } finally {
       setGoogleBusy(false);
     }
@@ -799,7 +831,7 @@ export function ProfileScreen() {
   function handleSave() {
     const trimName    = name.trim();
     const trimNick    = nickname.trim().replace(/^@/, '');
-    if (!trimName) { Alert.alert('Укажите имя'); return; }
+    if (!trimName) { Alert.alert(t('pf_name_required')); return; }
     const words    = [trimName, surname.trim()].filter(Boolean);
     const initials = words.map(w => w[0]?.toUpperCase() ?? '').join('').slice(0, 2);
     const changes = {
@@ -817,25 +849,25 @@ export function ProfileScreen() {
   }
 
   const displayName = [user.name, user.surname].filter(Boolean).join(' ');
-  const nickDisplay = user.nickname ? `@${user.nickname}` : 'Никнейм не задан';
+  const nickDisplay = user.nickname ? `@${user.nickname}` : t('pf_no_nickname');
 
   if (editing) {
     return (
       <SafeAreaView style={[ps.root]}>
         <ScrollView contentContainerStyle={ps.scroll}>
-          <Text style={ps.label}>Имя</Text>
-          <TextInput style={ps.input} placeholder="Имя" placeholderTextColor={C.textTertiary} value={name} onChangeText={setName} />
-          <Text style={ps.label}>Фамилия</Text>
-          <TextInput style={ps.input} placeholder="Фамилия" placeholderTextColor={C.textTertiary} value={surname} onChangeText={setSurname} />
-          <Text style={ps.label}>Никнейм</Text>
+          <Text style={ps.label}>{t('pf_first_name')}</Text>
+          <TextInput style={ps.input} placeholder={t('pf_first_name')} placeholderTextColor={C.textTertiary} value={name} onChangeText={setName} />
+          <Text style={ps.label}>{t('pf_last_name')}</Text>
+          <TextInput style={ps.input} placeholder={t('pf_last_name')} placeholderTextColor={C.textTertiary} value={surname} onChangeText={setSurname} />
+          <Text style={ps.label}>{t('pf_nickname')}</Text>
           <TextInput style={ps.input} placeholder="@nickname" placeholderTextColor={C.textTertiary} value={nickname} onChangeText={tt => setNickname(tt.startsWith('@') ? tt : `@${tt}`)} autoCapitalize="none" />
-          <Text style={ps.label}>E-mail</Text>
+          <Text style={ps.label}>{t('pf_email')}</Text>
           <TextInput style={ps.input} placeholder="email@example.com" placeholderTextColor={C.textTertiary} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
           <TouchableOpacity style={ps.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={ps.saveBtnText}>Сохранить</Text>
+            <Text style={ps.saveBtnText}>{t('save')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{ alignItems: 'center', padding: Spacing.md }} onPress={() => setEditing(false)}>
-            <Text style={{ fontSize: Typography.size.base, color: C.textSecondary }}>Отмена</Text>
+            <Text style={{ fontSize: Typography.size.base, color: C.textSecondary }}>{t('cancel')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -865,8 +897,8 @@ export function ProfileScreen() {
         {isGoogleConfigured() && (
           user.googleLinked ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: C.bgCard, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg }}>
-              <Text style={{ fontSize: 18, width: 26, textAlign: 'center' }}>✅</Text>
-              <Text style={{ flex: 1, fontSize: Typography.size.base, color: C.textSecondary }}>Google подключён</Text>
+              <Icon name="check-circle" size={18} color={Colors.success} style={{ width: 26 }} />
+              <Text style={{ flex: 1, fontSize: Typography.size.base, color: C.textSecondary }}>{t('pf_google_linked')}</Text>
             </View>
           ) : (
             <TouchableOpacity
@@ -876,24 +908,26 @@ export function ProfileScreen() {
               {googleBusy
                 ? <ActivityIndicator color={C.textSecondary} />
                 : <>
-                    <Text style={{ fontSize: 18 }}>🇬</Text>
-                    <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: C.textPrimary }}>Войти через Google</Text>
+                    <Icon name="google" size={18} color={C.textSecondary} />
+                    <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: C.textPrimary }}>{t('pf_google_signin')}</Text>
                   </>}
             </TouchableOpacity>
           )
         )}
 
         {[
-          { emoji: '🏠', label: `Мои аптечки (${kits.length})`, onPress: () => {} },
-          { emoji: '✏️', label: 'Редактировать профиль', onPress: () => setEditing(true) },
-          { emoji: '👥', label: 'Контакты', onPress: () => navigation.navigate('Persons') },
-          { emoji: '📅', label: 'Сроки годности', onPress: () => navigation.navigate('Expiry') },
-          { emoji: '⚙️', label: 'Настройки', onPress: () => navigation.navigate('Settings') },
-          { emoji: '❓', label: 'Помощь', onPress: () => navigation.navigate('Support') },
+          { icon: 'home',         label: t('pf_my_kits').replace('{count}', String(kits.length)), onPress: () => {} },
+          { icon: 'pencil',       label: t('pf_edit_profile'), onPress: () => setEditing(true) },
+          { icon: 'account-group', label: t('pf_contacts'), onPress: () => navigation.navigate('Persons') },
+          { icon: 'doctor',        label: t('pf_doctors'), onPress: () => navigation.navigate('Doctors') },
+          { icon: 'file-document-multiple', label: t('pf_analyses_archive'), onPress: () => navigation.navigate('AnalysesArchive') },
+          { icon: 'calendar',     label: t('pf_expiry_dates'), onPress: () => navigation.navigate('Expiry') },
+          { icon: 'cog',          label: t('pf_settings'), onPress: () => navigation.navigate('Settings') },
+          { icon: 'help-circle',  label: t('pf_help'), onPress: () => navigation.navigate('Support') },
         ].map((item, i, arr) => (
           <View key={item.label}>
             <TouchableOpacity style={ps.row} onPress={item.onPress} activeOpacity={0.8}>
-              <Text style={{ fontSize: 18, width: 26, textAlign: 'center' }}>{item.emoji}</Text>
+              <Icon name={item.icon} size={18} color={C.textSecondary} style={{ width: 26, textAlign: 'center' }} />
               <Text style={ps.rowText}>{item.label}</Text>
               <Icon name="chevron-right" size={20} color={C.textTertiary} />
             </TouchableOpacity>
@@ -932,16 +966,26 @@ function makeSettingsStyles(C: ColorPalette) {
 }
 
 const THEMES = [
-  { key: 'light',  emoji: '☀️' },
-  { key: 'dark',   emoji: '🌙' },
-  { key: 'system', emoji: '📱' },
+  { key: 'light',       icon: 'weather-sunny' },
+  { key: 'dark',        icon: 'weather-night' },
+  { key: 'system',      icon: 'cellphone' },
+  { key: 'pastel',      icon: 'flower' },
+  { key: 'green',       icon: 'leaf' },
+  { key: 'red',         icon: 'flower-tulip' },
+  { key: 'mint',        icon: 'leaf-maple' },
+  { key: 'dark-pastel', icon: 'star-four-points' },
+  { key: 'dark-green',  icon: 'pine-tree' },
+  { key: 'dark-red',    icon: 'alert-circle' },
+  { key: 'dark-mint',   icon: 'waves' },
+  { key: 'custom',      icon: 'palette' },
 ] as const;
 
-const LANGUAGES: { key: 'en' | 'ru' | 'tr' | 'ro'; flag: string; name: string }[] = [
-  { key: 'en', flag: '🇬🇧', name: 'English' },
-  { key: 'ru', flag: '🇷🇺', name: 'Русский' },
-  { key: 'tr', flag: '🇹🇷', name: 'Türkçe' },
-  { key: 'ro', flag: '🇷🇴', name: 'Română' },
+
+const LANGUAGES: { key: 'en' | 'ru' | 'tr' | 'ro'; abbr: string; name: string }[] = [
+  { key: 'en', abbr: 'EN', name: 'English' },
+  { key: 'ru', abbr: 'RU', name: 'Русский' },
+  { key: 'tr', abbr: 'TR', name: 'Türkçe' },
+  { key: 'ro', abbr: 'RO', name: 'Română' },
 ];
 
 export function SettingsScreen() {
@@ -956,10 +1000,10 @@ export function SettingsScreen() {
   }
 
   const notifItems = [
-    { emoji: '🔔', key: 'pushEnabled'                  as const, label: t('push_enabled') },
-    { emoji: '📦', key: 'lowStockEnabled'              as const, label: t('low_stock_enabled') },
-    { emoji: '👥', key: 'kitActivityEnabled'           as const, label: t('kit_activity_enabled') },
-    { emoji: '⚠️', key: 'interactionWarningsEnabled'  as const, label: t('interaction_warnings_enabled') },
+    { icon: 'bell',          key: 'pushEnabled'                 as const, label: t('push_enabled') },
+    { icon: 'package-variant', key: 'lowStockEnabled'           as const, label: t('low_stock_enabled') },
+    { icon: 'account-group', key: 'kitActivityEnabled'          as const, label: t('kit_activity_enabled') },
+    { icon: 'alert',         key: 'interactionWarningsEnabled'  as const, label: t('interaction_warnings_enabled') },
   ];
 
   return (
@@ -972,7 +1016,7 @@ export function SettingsScreen() {
           {THEMES.map((th, i) => (
             <View key={th.key}>
               <TouchableOpacity style={stg.row} onPress={() => update({ theme: th.key })} activeOpacity={0.8}>
-                <Text style={{ fontSize: 20, width: 30, textAlign: 'center' }}>{th.emoji}</Text>
+                <Icon name={th.icon} size={20} color={C.textSecondary} style={{ width: 30, textAlign: 'center' }} />
                 <Text style={stg.rowLabel}>{t(`theme_${th.key}` as any)}</Text>
                 <View style={[stg.radio, settings.theme === th.key && stg.radioActive]}>
                   {settings.theme === th.key && <View style={stg.radioDot} />}
@@ -983,13 +1027,71 @@ export function SettingsScreen() {
           ))}
         </View>
 
+        {/* ── Custom color pickers (4 hue sliders) ── */}
+        {settings.theme === 'custom' && (
+          <>
+            <Text style={stg.sec}>{t('theme_custom_colors')}</Text>
+            <View style={[stg.card, { padding: Spacing.md, gap: Spacing.lg }]}>
+              <HueSlider
+                label={t('theme_custom_accent')}
+                value={settings.accentColor ?? '#78A9FF'}
+                onChange={v => update({ accentColor: v })}
+              />
+              <View style={{ height: 1, backgroundColor: C.borderLight }} />
+              <HueSlider
+                label={t('theme_custom_bg')}
+                value={settings.customBg ?? '#F7F8FD'}
+                onChange={v => update({ customBg: v })}
+                saturation={20}
+                lightness={97}
+              />
+              <View style={{ height: 1, backgroundColor: C.borderLight }} />
+              <HueSlider
+                label={t('theme_custom_card')}
+                value={settings.customCard ?? '#FFFFFF'}
+                onChange={v => update({ customCard: v })}
+                saturation={15}
+                lightness={99}
+              />
+              <View style={{ height: 1, backgroundColor: C.borderLight }} />
+              <HueSlider
+                label={t('theme_custom_text')}
+                value={settings.customText ?? '#364052'}
+                onChange={v => update({ customText: v })}
+                saturation={25}
+                lightness={22}
+              />
+            </View>
+          </>
+        )}
+
+        {/* ── Gradient toggle ── */}
+        <View style={stg.card}>
+          <TouchableOpacity
+            style={stg.row}
+            onPress={() => update({ useGradient: !settings.useGradient })}
+            activeOpacity={0.8}
+          >
+            <Icon name="gradient-vertical" size={20} color={C.textSecondary} style={{ width: 30, textAlign: 'center' }} />
+            <View style={{ flex: 1 }}>
+              <Text style={stg.rowLabel}>{t('theme_gradient')}</Text>
+              <Text style={{ fontSize: Typography.size.xs, color: C.textTertiary, marginTop: 2 }}>{t('theme_gradient_sub')}</Text>
+            </View>
+            <View style={[stg.toggle, settings.useGradient ? stg.toggleOn : stg.toggleOff]}>
+              <View style={[stg.toggleThumb, settings.useGradient ? stg.thumbRight : stg.thumbLeft]} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* ── Language ── */}
         <Text style={stg.sec}>{t('language')}</Text>
         <View style={stg.card}>
           {LANGUAGES.map((lang, i) => (
             <View key={lang.key}>
               <TouchableOpacity style={stg.row} onPress={() => update({ language: lang.key })} activeOpacity={0.8}>
-                <Text style={{ fontSize: 22, width: 30, textAlign: 'center' }}>{lang.flag}</Text>
+                <View style={{ width: 30, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: C.textSecondary, letterSpacing: 0.5 }}>{lang.abbr}</Text>
+                </View>
                 <Text style={stg.rowLabel}>{lang.name}</Text>
                 <View style={[stg.radio, settings.language === lang.key && stg.radioActive]}>
                   {settings.language === lang.key && <View style={stg.radioDot} />}
@@ -1006,7 +1108,7 @@ export function SettingsScreen() {
           {notifItems.map((item, i) => (
             <View key={item.key}>
               <TouchableOpacity style={stg.row} onPress={() => toggle(item.key)} activeOpacity={0.8}>
-                <Text style={{ fontSize: 18, width: 30, textAlign: 'center' }}>{item.emoji}</Text>
+                <Icon name={item.icon} size={18} color={C.textSecondary} style={{ width: 30, textAlign: 'center' }} />
                 <Text style={stg.rowLabel}>{item.label}</Text>
                 <View style={[stg.toggle, settings.reminders[item.key] ? stg.toggleOn : stg.toggleOff]}>
                   <View style={[stg.toggleThumb, settings.reminders[item.key] ? stg.thumbRight : stg.thumbLeft]} />

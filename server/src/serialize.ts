@@ -71,7 +71,7 @@ export interface MedicineRow {
   start_date: string | null; expiration_date: string; storage_notes: string | null;
   notes: string | null; photo_uri: string | null; description: string | null;
   usage_notes: string | null; warnings: unknown; incompatible_with: unknown;
-  tags: unknown; added_at: string; updated_at: string;
+  tags: unknown; color_tag: string | null; added_at: string; updated_at: string;
 }
 
 // JSONB columns arrive already parsed from pg.
@@ -103,6 +103,7 @@ export function medicineDto(r: MedicineRow) {
     warnings: jsonArr(r.warnings) as string[] | undefined,
     incompatibleWith: jsonArr(r.incompatible_with) as string[] | undefined,
     tags: jsonArr(r.tags) as string[] | undefined,
+    colorTag: r.color_tag ?? undefined,
     addedAt: r.added_at,
     updatedAt: r.updated_at,
   };

@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppNotification, NotificationType, MedicineReminder, NotificationsStackParamList } from '../types';
 import { useAppStore } from '../store';
+import { cancelReminder } from '../utils/notificationScheduler';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
@@ -19,16 +20,16 @@ type Nav = NativeStackNavigationProp<NotificationsStackParamList, 'Notifications
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: (key: string) => string): string {
   try {
     const diff = Date.now() - new Date(iso).getTime();
     const m = Math.floor(diff / 60000);
     const h = Math.floor(diff / 3600000);
     const d = Math.floor(diff / 86400000);
-    if (m < 1)  return 'только что';
-    if (m < 60) return `${m} мин.`;
-    if (h < 24) return `${h} ч.`;
-    return `${d} дн.`;
+    if (m < 1)  return t('misc_time_just_now');
+    if (m < 60) return `${m} ${t('misc_time_min')}`;
+    if (h < 24) return `${h} ${t('misc_time_hour')}`;
+    return `${d} ${t('misc_time_day')}`;
   } catch { return ''; }
 }
 
@@ -177,36 +178,45 @@ export function NotificationsScreen() {
     interaction_warning: '#FF7575',
     kit_update:          '#78A9FF',
   };
-  const TYPE_EMOJI: Record<NotificationType, string> = {
-    expired:             '🔴',
-    expiring_soon:       '🟡',
-    low_stock:           '📦',
-    interaction_warning: '⚠️',
-    kit_update:          '🔄',
+  const TYPE_ICON: Record<NotificationType, string> = {
+    expired:             'alert-circle',
+    expiring_soon:       'alert-circle',
+    low_stock:           'package-variant',
+    interaction_warning: 'alert',
+    kit_update:          'sync',
+  };
+
+  const TYPE_ICON_COLOR: Record<NotificationType, string> = {
+    expired:             C.danger,
+    expiring_soon:       C.warning,
+    low_stock:           C.warning,
+    interaction_warning: C.danger,
+    kit_update:          C.blue,
   };
 
   function handleTaken(r: MedicineReminder) {
     if (isTakenToday(r)) return;
     Alert.alert(
       r.medicineName,
-      `Отметить приём ${r.pillCount} шт. и уменьшить запас?`,
+      t('misc_confirm_take_dose').replace('{count}', String(r.pillCount)),
       [
         { text: t('cancel'), style: 'cancel' },
-        { text: '✅ Принято', onPress: () => markTaken(r.id) },
+        { text: t('misc_taken_action'), onPress: () => markTaken(r.id) },
       ],
     );
   }
 
   function handleDeleteReminder(r: MedicineReminder) {
-    Alert.alert('Удалить напоминание?', r.medicineName, [
+    Alert.alert(t('misc_delete_reminder_q'), r.medicineName, [
       { text: t('cancel'), style: 'cancel' },
-      { text: t('delete'), style: 'destructive', onPress: () => deleteRem(r.id) },
+      { text: t('delete'), style: 'destructive', onPress: () => { deleteRem(r.id); cancelReminder(r.id).catch(() => {}); } },
     ]);
   }
 
   function renderNotif({ item }: { item: AppNotification }) {
-    const dotColor = DOT_COLORS[item.type] ?? '#78A9FF';
-    const emoji    = TYPE_EMOJI[item.type]  ?? '🔄';
+    const dotColor  = DOT_COLORS[item.type] ?? '#78A9FF';
+    const iconName  = TYPE_ICON[item.type]  ?? 'sync';
+    const iconColor = TYPE_ICON_COLOR[item.type] ?? C.blue;
     return (
       <TouchableOpacity
         style={[s.card, item.isRead && s.cardRead]}
@@ -215,13 +225,16 @@ export function NotificationsScreen() {
       >
         <View style={[s.dot, { backgroundColor: dotColor, opacity: item.isRead ? 0.3 : 1 }]} />
         <View style={s.body}>
-          <Text style={[s.notifTitle, item.isRead && s.notifTitleRead]}>
-            {emoji} {item.title}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name={iconName} size={16} color={iconColor} />
+            <Text style={[s.notifTitle, item.isRead && s.notifTitleRead]}>
+              {item.title}
+            </Text>
+          </View>
           <Text style={s.notifSub}>{item.body}</Text>
         </View>
         <View style={s.right}>
-          <Text style={s.time}>{timeAgo(item.createdAt)}</Text>
+          <Text style={s.time}>{timeAgo(item.createdAt, t)}</Text>
           <TouchableOpacity onPress={() => dismiss(item.id)} hitSlop={8}>
             <Icon name="close" size={16} color={C.textTertiary} />
           </TouchableOpacity>
@@ -237,7 +250,10 @@ export function NotificationsScreen() {
         <View style={s.remHeader}>
           <View style={s.remInfo}>
             <Text style={s.remName}>{r.medicineName}</Text>
-            <Text style={s.remKit}>🏠 {r.kitName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Icon name="home" size={12} color={C.textSecondary} />
+              <Text style={s.remKit}>{r.kitName}</Text>
+            </View>
           </View>
           <View style={s.remBadge}>
             <Text style={[s.remBadgeText, r.isActive ? s.remBadgeActive : s.remBadgeInactive]}>
@@ -248,16 +264,17 @@ export function NotificationsScreen() {
 
         <View style={s.timesRow}>
           {r.times.map((time, i) => (
-            <View key={i} style={[s.timeBubble, taken && s.timeBubbleTaken]}>
-              <Text style={[s.timeBubbleText, taken && s.timeBubbleTextTaken]}>🕐 {time}</Text>
+            <View key={i} style={[s.timeBubble, taken && s.timeBubbleTaken, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+              <Icon name="clock-outline" size={12} color={taken ? C.successDark : C.blueDark} />
+              <Text style={[s.timeBubbleText, taken && s.timeBubbleTextTaken]}>{time}</Text>
             </View>
           ))}
-          <Text style={s.pillCountText}>{r.pillCount} шт</Text>
+          <Text style={s.pillCountText}>{r.pillCount} {t('misc_unit_pcs')}</Text>
         </View>
 
         {r.daysOfWeek.length > 0 && (
           <Text style={s.daysText}>
-            {['Вс','Пн','Вт','Ср','Чт','Пт','Сб'].filter((_, i) => r.daysOfWeek.includes(i)).join(', ')}
+            {[t('day_sun'), t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat')].filter((_, i) => r.daysOfWeek.includes(i)).join(', ')}
           </Text>
         )}
 
@@ -299,9 +316,12 @@ export function NotificationsScreen() {
     <SafeAreaView style={s.root}>
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.title}>
-          {tab === 'alerts' ? '🔔 Уведомления' : '💊 Напоминания'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon name={tab === 'alerts' ? 'bell' : 'pill'} size={22} color={C.textPrimary} />
+          <Text style={s.title}>
+            {tab === 'alerts' ? t('misc_notifications_title') : t('misc_reminders_title')}
+          </Text>
+        </View>
         {tab === 'alerts' && unread > 0 && (
           <TouchableOpacity onPress={markAll}>
             <Text style={s.markAll}>{t('mark_all_read')}</Text>

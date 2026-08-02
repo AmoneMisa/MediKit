@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { createServer } from 'node:http';
 import { ZodError } from 'zod';
 import { config } from './config.js';
@@ -15,14 +17,26 @@ import { activityRouter } from './routes/activity.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { medicinesRouter } from './routes/medicines.js';
 import { kitMedicinesRouter } from './routes/kitMedicines.js';
+import { doctorsRouter } from './routes/doctors.js';
+import { appointmentsRouter } from './routes/appointments.js';
 
 const app = express();
+app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+// Rate-limit auth endpoints to prevent brute-force attacks.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 20,                     // 20 attempts per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true, service: 'medikit-server' }));
 
-app.use('/api/auth', authRouter);
+app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/users', usersRouter);
 // Both kit CRUD and kit-scoped invite/activity share the /api/kits prefix.
 app.use('/api/kits', kitsRouter);
@@ -32,6 +46,8 @@ app.use('/api/kits', activityRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/medicines', medicinesRouter);
+app.use('/api/doctors',       doctorsRouter);
+app.use('/api/appointments',  appointmentsRouter);
 
 // Central error handler → JSON.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -53,7 +69,7 @@ async function main(): Promise<void> {
   await seedMedicinesCatalog();
   server.listen(config.port, () => {
     console.log(`MediKit server listening on http://0.0.0.0:${config.port}`);
-    console.log(`WebSocket:  ws://0.0.0.0:${config.port}/ws?token=<jwt>`);
+    console.log(`WebSocket:  ws://0.0.0.0:${config.port}/ws  (auth via first-message frame)`);
   });
 }
 

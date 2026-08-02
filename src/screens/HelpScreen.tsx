@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
+import { useT } from '../i18n';
 
 const CONTACT_EMAIL = 'kubai.rita2@gmail.com';
 
@@ -26,87 +27,105 @@ interface Section {
 const SECTIONS: Section[] = [
   {
     icon: 'pill',
-    title: 'Добавление препаратов',
+    title: 'help_sec_add_title',
     items: [
       {
-        q: 'Как добавить препарат быстрее всего?',
-        a: 'Нажмите «+» в аптечке → «Сканировать упаковку». Наведите камеру на штрих-код или QR-код — приложение само заполнит название, дозировку и форму.',
+        q: 'help_add_q1',
+        a: 'help_add_a1',
       },
       {
-        q: 'Что делать, если штрих-код не распознан?',
-        a: 'Выберите «Найти в базе» и введите название препарата — поиск работает по локальной базе и международным реестрам. Если препарата нет нигде, используйте «Ввести вручную».',
+        q: 'help_add_q2',
+        a: 'help_add_a2',
       },
       {
-        q: 'Можно ли добавить несколько аптечек?',
-        a: 'Да. На главном экране нажмите «Добавить аптечку». Удобно иметь отдельные аптечки: домашнюю, дорожную, детскую.',
+        q: 'help_add_q3',
+        a: 'help_add_a3',
       },
       {
-        q: 'Как работают авто-теги?',
-        a: 'При добавлении препарата приложение анализирует название и активное вещество и предлагает подходящие теги (например «боль», «антибиотик»). Вы можете принять их одним нажатием или отклонить.',
+        q: 'help_add_q4',
+        a: 'help_add_a4',
       },
     ],
   },
   {
     icon: 'bell-outline',
-    title: 'Напоминания и уведомления',
+    title: 'help_sec_reminders_title',
     items: [
       {
-        q: 'Как получать напоминания о приёме?',
-        a: 'Откройте карточку препарата → нажмите «Напомни». Укажите время, дни недели и количество таблеток. Напоминание будет приходить по расписанию.',
+        q: 'help_rem_q1',
+        a: 'help_rem_a1',
       },
       {
-        q: 'Когда приходят предупреждения об истечении срока?',
-        a: 'Приложение предупреждает за 90, 30 и 7 дней до истечения. Просроченные препараты выделяются красным значком на всех экранах.',
+        q: 'help_rem_q2',
+        a: 'help_rem_a2',
       },
       {
-        q: 'Что делать с уведомлением о несовместимости?',
-        a: 'Если в одной аптечке есть препараты, которые нельзя принимать вместе, приложение покажет предупреждение. Нажмите на него, чтобы узнать подробности.',
+        q: 'help_rem_q3',
+        a: 'help_rem_a3',
       },
     ],
   },
   {
     icon: 'share-variant',
-    title: 'Шаринг и совместный доступ',
+    title: 'help_sec_share_title',
     items: [
       {
-        q: 'Как поделиться аптечкой?',
-        a: 'Откройте аптечку → ⋯ → «Поделиться аптечкой». Скопируйте ссылку или отправьте QR-код через Telegram или WhatsApp.',
+        q: 'help_share_q1',
+        a: 'help_share_a1',
       },
       {
-        q: 'Какие роли доступа существуют?',
-        a: '«Просмотр» — видит препараты, но не может ничего менять. «Редактор» — может добавлять и редактировать. «Полный синк» — полный доступ, изменения отражаются в реальном времени.',
+        q: 'help_share_q2',
+        a: 'help_share_a2',
       },
       {
-        q: 'Как добавить человека в контакты?',
-        a: 'Перейдите в Профиль → Контакты → нажмите «+». Укажите имя и никнейм — потом этого человека можно быстро пригласить в аптечку.',
+        q: 'help_share_q3',
+        a: 'help_share_a3',
       },
     ],
   },
   {
     icon: 'book-open-outline',
-    title: 'Журнал приёма',
+    title: 'help_sec_journal_title',
     items: [
       {
-        q: 'Зачем вести журнал приёма?',
-        a: 'Журнал помогает отслеживать, когда и какие препараты вы принимали, какие симптомы были. Полезно при визите к врачу или если нужно вспомнить курс лечения.',
+        q: 'help_journal_q1',
+        a: 'help_journal_a1',
       },
       {
-        q: 'Как добавить запись?',
-        a: 'Перейдите во вкладку «Журнал» → нажмите «+». Выберите дату, время, препараты из вашей аптечки, укажите симптомы и заметки.',
+        q: 'help_journal_q2',
+        a: 'help_journal_a2',
       },
     ],
   },
   {
     icon: 'cart-outline',
-    title: 'Список покупок',
+    title: 'help_sec_shopping_title',
     items: [
       {
-        q: 'Как добавить препарат в список покупок?',
-        a: 'Перейдите во вкладку «Купить» → «+». Можно добавить вручную, найти в базе или выбрать препарат из уже существующей аптечки.',
+        q: 'help_shop_q1',
+        a: 'help_shop_a1',
       },
       {
-        q: 'Что происходит, когда я отмечаю препарат купленным?',
-        a: 'Приложение предложит выбрать количество и аптечку — препарат сразу добавится туда. Позиция исчезнет из списка покупок.',
+        q: 'help_shop_q2',
+        a: 'help_shop_a2',
+      },
+    ],
+  },
+  {
+    icon: 'calendar-account',
+    title: 'help_sec_appts_title',
+    items: [
+      {
+        q: 'help_appt_q1',
+        a: 'help_appt_a1',
+      },
+      {
+        q: 'help_appt_q2',
+        a: 'help_appt_a2',
+      },
+      {
+        q: 'help_appt_q3',
+        a: 'help_appt_a3',
       },
     ],
   },
@@ -196,20 +215,21 @@ function makeStyles(C: ColorPalette) {
 
 // ── FaqRow ────────────────────────────────────────────────────────────────────
 
-function FaqRow({ item, isLast, s, C }: {
+function FaqRow({ item, isLast, s, C, t }: {
   item: FaqItem;
   isLast: boolean;
   s: ReturnType<typeof makeStyles>;
   C: ColorPalette;
+  t: (key: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <View style={[s.faqItem, isLast && { borderBottomWidth: 0 }]}>
       <TouchableOpacity style={s.faqQuestion} onPress={() => setOpen(o => !o)} activeOpacity={0.7}>
-        <Text style={s.faqQText}>{item.q}</Text>
+        <Text style={s.faqQText}>{t(item.q)}</Text>
         <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} color={C.textTertiary} />
       </TouchableOpacity>
-      {open && <Text style={s.faqAnswer}>{item.a}</Text>}
+      {open && <Text style={s.faqAnswer}>{t(item.a)}</Text>}
     </View>
   );
 }
@@ -218,11 +238,12 @@ function FaqRow({ item, isLast, s, C }: {
 
 export function HelpScreen() {
   const C = useColors();
+  const t = useT();
   const s = useMemo(() => makeStyles(C), [C]);
 
   function handleEmailPress() {
-    Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=MediKit — Вопрос`).catch(() => {
-      Alert.alert('Почта', CONTACT_EMAIL);
+    Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=${t('help_email_subject')}`).catch(() => {
+      Alert.alert(t('help_email_alert_title'), CONTACT_EMAIL);
     });
   }
 
@@ -233,8 +254,8 @@ export function HelpScreen() {
         {/* Hero */}
         <View style={s.heroCard}>
           <Icon name="help-circle" size={48} color={C.blue} />
-          <Text style={s.heroTitle}>Как пользоваться</Text>
-          <Text style={s.heroSub}>Ответы на частые вопросы{'\n'}о работе приложения</Text>
+          <Text style={s.heroTitle}>{t('title_how_to_use')}</Text>
+          <Text style={s.heroSub}>{t('help_hero_sub')}</Text>
         </View>
 
         {/* FAQ sections */}
@@ -242,7 +263,7 @@ export function HelpScreen() {
           <View key={section.title} style={s.sectionCard}>
             <View style={s.sectionHeader}>
               <Icon name={section.icon} size={20} color={C.blue} />
-              <Text style={s.sectionTitle}>{section.title}</Text>
+              <Text style={s.sectionTitle}>{t(section.title)}</Text>
             </View>
             {section.items.map((item, i) => (
               <FaqRow
@@ -251,6 +272,7 @@ export function HelpScreen() {
                 isLast={i === section.items.length - 1}
                 s={s}
                 C={C}
+                t={t}
               />
             ))}
           </View>
@@ -259,13 +281,11 @@ export function HelpScreen() {
         {/* Contact */}
         <View style={s.contactCard}>
           <Icon name="email-outline" size={40} color={C.blue} />
-          <Text style={s.contactTitle}>Нужна помощь?</Text>
-          <Text style={s.contactSub}>
-            Не нашли ответ на свой вопрос?{'\n'}Напишите нам — ответим в течение дня.
-          </Text>
+          <Text style={s.contactTitle}>{t('help_contact_title')}</Text>
+          <Text style={s.contactSub}>{t('help_contact_sub')}</Text>
           <TouchableOpacity style={s.emailBtn} onPress={handleEmailPress} activeOpacity={0.85}>
             <Icon name="send" size={16} color={C.white} />
-            <Text style={s.emailBtnText}>Написать</Text>
+            <Text style={s.emailBtnText}>{t('help_contact_button')}</Text>
           </TouchableOpacity>
           <Text style={s.emailText}>{CONTACT_EMAIL}</Text>
         </View>

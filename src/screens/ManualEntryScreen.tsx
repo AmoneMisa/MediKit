@@ -9,12 +9,20 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { KitsStackParamList, MedicineForm, CompositionItem } from '../types';
 import { useAppStore } from '../store';
+import { scheduleMedicineExpiry, cancelMedicineExpiry } from '../utils/notificationScheduler';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import DatePicker from 'react-native-date-picker';
 import { inferMedicineTags } from '../utils/medicineTags';
 import { fetchMedicinePhoto } from '../utils/medicinePhoto';
+import { HueSlider } from '../components/HueSlider';
+import { useT } from '../i18n';
+
+const MED_COLOR_SWATCHES = [
+  '#78A9FF', '#56CE53', '#FF7575', '#FFCF47',
+  '#C97FE8', '#00BFA5', '#FF9800', '#FF4081',
+];
 
 let launchCamera: any;
 let launchImageLibrary: any;
@@ -26,49 +34,49 @@ try {
 
 type Nav = NativeStackNavigationProp<KitsStackParamList, 'ManualEntry'>;
 
-const FORMS: { value: MedicineForm; label: string; emoji: string }[] = [
-  { value: 'tablets',   label: 'Таблетки',  emoji: '💊' },
-  { value: 'capsules',  label: 'Капсулы',   emoji: '💊' },
-  { value: 'syrup',     label: 'Сироп',     emoji: '🍯' },
-  { value: 'spray',     label: 'Спрей',     emoji: '💨' },
-  { value: 'drops',     label: 'Капли',     emoji: '💧' },
-  { value: 'ointment',  label: 'Мазь',      emoji: '🧴' },
-  { value: 'injection', label: 'Инъекция',  emoji: '💉' },
-  { value: 'powder',    label: 'Порошок',   emoji: '🧂' },
-  { value: 'other',     label: 'Другое',    emoji: '🩺' },
+const FORMS: { value: MedicineForm; labelKey: string; icon: string }[] = [
+  { value: 'tablets',   labelKey: 'me_form_tablets',   icon: 'pill' },
+  { value: 'capsules',  labelKey: 'me_form_capsules',  icon: 'pill' },
+  { value: 'syrup',     labelKey: 'me_form_syrup',     icon: 'bottle-tonic' },
+  { value: 'spray',     labelKey: 'me_form_spray',     icon: 'spray' },
+  { value: 'drops',     labelKey: 'me_form_drops',     icon: 'water' },
+  { value: 'ointment',  labelKey: 'me_form_ointment',  icon: 'lotion-plus' },
+  { value: 'injection', labelKey: 'me_form_injection', icon: 'needle' },
+  { value: 'powder',    labelKey: 'me_form_powder',    icon: 'dots-horizontal-circle' },
+  { value: 'other',     labelKey: 'me_form_other',     icon: 'stethoscope' },
 ];
 
-const MEDICINE_TAGS: { key: string; label: string; emoji: string }[] = [
-  { key: 'pain',       label: 'Боль',        emoji: '💊' },
-  { key: 'fever',      label: 'Температура', emoji: '🌡️' },
-  { key: 'sleep',      label: 'Сон',         emoji: '💤' },
-  { key: 'allergy',    label: 'Аллергия',    emoji: '🤧' },
-  { key: 'cold',       label: 'Простуда',    emoji: '🤒' },
-  { key: 'stomach',    label: 'ЖКТ',         emoji: '🫃' },
-  { key: 'heart',      label: 'Сердце',      emoji: '❤️' },
-  { key: 'nerves',     label: 'Нервы',       emoji: '🧠' },
-  { key: 'muscles',    label: 'Мышцы',       emoji: '💪' },
-  { key: 'antiseptic', label: 'Антисептик',  emoji: '🩹' },
-  { key: 'antibiotic', label: 'Антибиотик',  emoji: '🔬' },
-  { key: 'vitamins',   label: 'Витамины',    emoji: '🌿' },
-  { key: 'pressure',   label: 'Давление',    emoji: '🩺' },
-  { key: 'skin',       label: 'Кожа',        emoji: '🧴' },
-  { key: 'eyes',       label: 'Глаза',       emoji: '👁️' },
-  { key: 'diabetes',   label: 'Диабет',      emoji: '🩸' },
+const MEDICINE_TAGS: { key: string; labelKey: string; icon: string }[] = [
+  { key: 'pain',       labelKey: 'me_tag_pain',       icon: 'pill' },
+  { key: 'fever',      labelKey: 'me_tag_fever',      icon: 'thermometer' },
+  { key: 'sleep',      labelKey: 'me_tag_sleep',      icon: 'sleep' },
+  { key: 'allergy',    labelKey: 'me_tag_allergy',    icon: 'face-mask' },
+  { key: 'cold',       labelKey: 'me_tag_cold',       icon: 'emoticon-sick' },
+  { key: 'stomach',    labelKey: 'me_tag_stomach',    icon: 'food-apple' },
+  { key: 'heart',      labelKey: 'me_tag_heart',      icon: 'heart' },
+  { key: 'nerves',     labelKey: 'me_tag_nerves',     icon: 'brain' },
+  { key: 'muscles',    labelKey: 'me_tag_muscles',    icon: 'arm-flex' },
+  { key: 'antiseptic', labelKey: 'me_tag_antiseptic', icon: 'bandage' },
+  { key: 'antibiotic', labelKey: 'me_tag_antibiotic', icon: 'microscope' },
+  { key: 'vitamins',   labelKey: 'me_tag_vitamins',   icon: 'leaf' },
+  { key: 'pressure',   labelKey: 'me_tag_pressure',   icon: 'stethoscope' },
+  { key: 'skin',       labelKey: 'me_tag_skin',       icon: 'lotion-plus' },
+  { key: 'eyes',       labelKey: 'me_tag_eyes',       icon: 'eye' },
+  { key: 'diabetes',   labelKey: 'me_tag_diabetes',   icon: 'blood-bag' },
 ];
 
-const CONTRAINDICATIONS: { key: string; label: string }[] = [
-  { key: 'Беременность',                label: '🤰 Беременность' },
-  { key: 'Кормление грудью',            label: '🤱 Кормление грудью' },
-  { key: 'Дети до 6 лет',              label: '👶 Дети до 6 лет' },
-  { key: 'Дети до 12 лет',             label: '🧒 Дети до 12 лет' },
-  { key: 'Дети до 18 лет',             label: '🧑 Дети до 18 лет' },
-  { key: 'Нарушения функции почек',    label: '🫘 Нарушения почек' },
-  { key: 'Нарушения функции печени',   label: '🫁 Нарушения печени' },
-  { key: 'Не управлять авто',          label: '🚗 Не за руль' },
-  { key: 'Алкоголь несовместим',       label: '🍷 Без алкоголя' },
-  { key: 'Язвенная болезнь',           label: '🔴 Язвенная болезнь' },
-  { key: 'Только по назначению врача', label: '⚕️ По рецепту' },
+const CONTRAINDICATIONS: { key: string; icon: string; labelKey: string }[] = [
+  { key: 'Беременность',                icon: 'human-pregnant',    labelKey: 'me_ci_pregnancy' },
+  { key: 'Кормление грудью',            icon: 'baby-carriage',     labelKey: 'me_ci_breastfeeding' },
+  { key: 'Дети до 6 лет',              icon: 'baby-face-outline',  labelKey: 'me_ci_children_6' },
+  { key: 'Дети до 12 лет',             icon: 'human-child',        labelKey: 'me_ci_children_12' },
+  { key: 'Дети до 18 лет',             icon: 'human',              labelKey: 'me_ci_children_18' },
+  { key: 'Нарушения функции почек',    icon: 'water-outline',      labelKey: 'me_ci_kidney' },
+  { key: 'Нарушения функции печени',   icon: 'water',              labelKey: 'me_ci_liver' },
+  { key: 'Не управлять авто',          icon: 'car',                labelKey: 'me_ci_no_driving' },
+  { key: 'Алкоголь несовместим',       icon: 'glass-wine',         labelKey: 'me_ci_no_alcohol' },
+  { key: 'Язвенная болезнь',           icon: 'alert-circle',       labelKey: 'me_ci_ulcer' },
+  { key: 'Только по назначению врача', icon: 'medical-bag',        labelKey: 'me_ci_prescription' },
 ];
 
 function fmt(d: Date): string {
@@ -155,7 +163,7 @@ function makeStyles(C: ColorPalette) {
 
     // Photo
     photoSection:   { alignItems: 'center', paddingVertical: Spacing.md },
-    photoThumb:     { width: 120, height: 120, borderRadius: Radius.xl, marginBottom: Spacing.md },
+    photoThumb:     { width: 200, height: 200, borderRadius: Radius.xl, marginBottom: Spacing.md, alignSelf: 'center' },
     photoPlaceholder: {
       width: 120, height: 120, borderRadius: Radius.xl,
       backgroundColor: C.bgCardAlt, borderWidth: 2, borderStyle: 'dashed', borderColor: C.border,
@@ -168,8 +176,8 @@ function makeStyles(C: ColorPalette) {
       borderRadius: Radius.pill, borderWidth: 1.5, borderColor: C.blue, backgroundColor: C.bgCard,
     },
     photoBtnText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.blue },
-    photoRemoveBtn: { marginTop: Spacing.xs },
-    photoRemoveText: { fontSize: Typography.size.body, color: C.danger, fontWeight: Typography.weight.semibold },
+    photoRemoveBtn: { marginTop: Spacing.xs, alignSelf: 'center' },
+    photoRemoveText: { fontSize: Typography.size.body, color: C.danger, fontWeight: Typography.weight.semibold, textAlign: 'center' },
 
     // Field sub-styles
     fieldWrap:  { marginBottom: Spacing.md },
@@ -196,12 +204,14 @@ export function ManualEntryScreen() {
   const medicineId: string | undefined = route.params?.medicineId;
   const prefill                        = route.params?.prefill;
   const C  = useColors();
+  const t  = useT();
   const st = useMemo(() => makeStyles(C), [C]);
 
   const addMedicine    = useAppStore(s => s.addMedicine);
   const updateMedicine = useAppStore(s => s.updateMedicine);
   const kits           = useAppStore(s => s.kits);
   const getMedicine    = useAppStore(s => s.getMedicine);
+  const expiryDays     = useAppStore(s => s.settings.reminders.expiryDaysBefore);
   const existingMed    = medicineId ? getMedicine(medicineId) : undefined;
 
   const defaultExpiry = () => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d; };
@@ -225,6 +235,7 @@ export function ManualEntryScreen() {
   const [autoTagsDismissed, setAutoTagsDismissed] = useState(false);
   const [photoUri,         setPhotoUri]         = useState<string | undefined>(undefined);
   const [photoSearching,   setPhotoSearching]   = useState(false);
+  const [colorTag,         setColorTag]         = useState<string | undefined>(undefined);
 
   // Auto-tag: infer tags from name + active ingredient after a short delay
   const suggestedTags = useMemo(() => {
@@ -255,6 +266,7 @@ export function ManualEntryScreen() {
       setSelectedKitId(existingMed.kitId);
       setTags(existingMed.tags ?? []);
       if (existingMed.photoUri) setPhotoUri(existingMed.photoUri);
+      if (existingMed.colorTag) setColorTag(existingMed.colorTag);
     } else if (prefill) {
       if (prefill.name)             setName(prefill.name);
       if (prefill.manufacturer)     setManufacturer(prefill.manufacturer);
@@ -265,6 +277,11 @@ export function ManualEntryScreen() {
       if (prefill.warnings)         setWarnings(prefill.warnings);
       if (prefill.tags?.length)     setTags(prefill.tags);
       if (prefill.photoUri)         setPhotoUri(prefill.photoUri);
+      if (prefill.usageNotes)       setNotes(prefill.usageNotes);
+      if (prefill.totalQuantity) {
+        setTotalQty(String(prefill.totalQuantity));
+        setRemainingQty(String(prefill.totalQuantity));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -286,32 +303,32 @@ export function ManualEntryScreen() {
   }
 
   async function handleCamera() {
-    if (!launchCamera) { Alert.alert('Камера недоступна'); return; }
+    if (!launchCamera) { Alert.alert(t('me_camera_unavailable')); return; }
     const result = await launchCamera({ mediaType: 'photo', quality: 0.85, maxWidth: 900, maxHeight: 900 });
     if (result.assets?.[0]?.uri) setPhotoUri(result.assets[0].uri);
   }
 
   async function handleGallery() {
-    if (!launchImageLibrary) { Alert.alert('Галерея недоступна'); return; }
+    if (!launchImageLibrary) { Alert.alert(t('me_gallery_unavailable')); return; }
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.85, maxWidth: 900, maxHeight: 900 });
     if (result.assets?.[0]?.uri) setPhotoUri(result.assets[0].uri);
   }
 
   async function handleSearchApiPhoto() {
-    if (!name.trim()) { Alert.alert('Введите название', 'Для поиска фото нужно название препарата.'); return; }
+    if (!name.trim()) { Alert.alert(t('me_enter_name'), t('me_enter_name_for_photo')); return; }
     setPhotoSearching(true);
     const uri = await fetchMedicinePhoto(name);
     setPhotoSearching(false);
     if (uri) {
       setPhotoUri(uri);
     } else {
-      Alert.alert('Фото не найдено', 'Попробуйте другое написание или добавьте фото вручную.');
+      Alert.alert(t('me_photo_not_found'), t('me_photo_not_found_sub'));
     }
   }
 
   function handleSave() {
-    if (!name.trim()) { Alert.alert('Укажите название', 'Название препарата обязательно.'); return; }
-    if (!selectedKitId) { Alert.alert('Выберите аптечку', 'Сначала создайте аптечку на вкладке «Аптечки».'); return; }
+    if (!name.trim()) { Alert.alert(t('me_specify_name'), t('me_name_required')); return; }
+    if (!selectedKitId) { Alert.alert(t('me_choose_kit'), t('me_create_kit_first')); return; }
 
     const total     = parseInt(totalQty, 10) || 1;
     const remaining = parseInt(remainingQty, 10) || total;
@@ -336,12 +353,20 @@ export function ManualEntryScreen() {
       warnings:          warnings.length > 0 ? warnings : undefined,
       tags:              tags.length > 0 ? tags : undefined,
       photoUri:          photoUri || undefined,
+      colorTag:          colorTag || undefined,
     };
 
     if (existingMed && medicineId) {
       updateMedicine(medicineId, fields);
+      // Reschedule expiry alerts with updated expiry date
+      const updated = { ...existingMed, ...fields };
+      cancelMedicineExpiry(medicineId)
+        .then(() => scheduleMedicineExpiry(updated as any, expiryDays))
+        .catch(() => {});
     } else {
-      addMedicine({ id: `med-${Date.now()}`, ...fields, addedAt: now, updatedAt: now });
+      const newMed = { id: `med-${Date.now()}`, ...fields, addedAt: now, updatedAt: now };
+      addMedicine(newMed);
+      scheduleMedicineExpiry(newMed as any, expiryDays).catch(() => {});
     }
     navigation.goBack();
   }
@@ -354,13 +379,13 @@ export function ManualEntryScreen() {
         <ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled">
 
           {/* ── Photo ── */}
-          <Text style={st.sectionTitle}>Фото</Text>
+          <Text style={st.sectionTitle}>{t('me_photo')}</Text>
           <View style={[st.card, st.photoSection]}>
             {photoUri ? (
               <>
                 <Image source={{ uri: photoUri }} style={st.photoThumb} resizeMode="cover" />
                 <TouchableOpacity style={st.photoRemoveBtn} onPress={() => setPhotoUri(undefined)}>
-                  <Text style={st.photoRemoveText}>Удалить фото</Text>
+                  <Text style={st.photoRemoveText}>{t('me_remove_photo')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -371,32 +396,32 @@ export function ManualEntryScreen() {
             <View style={st.photoActions}>
               <TouchableOpacity style={st.photoBtn} onPress={handleCamera} activeOpacity={0.8}>
                 <Icon name="camera" size={14} color={C.blue} />
-                <Text style={st.photoBtnText}>Камера</Text>
+                <Text style={st.photoBtnText}>{t('me_camera')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={st.photoBtn} onPress={handleGallery} activeOpacity={0.8}>
                 <Icon name="image" size={14} color={C.blue} />
-                <Text style={st.photoBtnText}>Галерея</Text>
+                <Text style={st.photoBtnText}>{t('me_gallery')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={st.photoBtn} onPress={handleSearchApiPhoto} activeOpacity={0.8} disabled={photoSearching}>
                 {photoSearching
                   ? <ActivityIndicator size="small" color={C.blue} />
                   : <Icon name="web-search" size={14} color={C.blue} />}
-                <Text style={st.photoBtnText}>Найти онлайн</Text>
+                <Text style={st.photoBtnText}>{t('me_find_online')}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* ── Basic info ── */}
-          <Text style={st.sectionTitle}>Основное</Text>
+          <Text style={st.sectionTitle}>{t('me_basic')}</Text>
           <View style={st.card}>
-            <Field label="Название *"             placeholder="Название препарата"            value={name}             onChangeText={setName}             styles={st} colors={C} />
-            <Field label="Производитель"          placeholder="Bayer, Pfizer…"               value={manufacturer}     onChangeText={setManufacturer}     styles={st} colors={C} />
-            <Field label="Действующее вещество"   placeholder="МНН / активный компонент"     value={activeIngredient} onChangeText={setActiveIngredient} styles={st} colors={C} />
-            <Field label="Дозировка"              placeholder="500 мг, 0.1%, 10000 ЕД…"     value={dosage}           onChangeText={setDosage}           styles={st} colors={C} />
+            <Field label={t('me_name_label')}             placeholder={t('me_name_placeholder')}            value={name}             onChangeText={setName}             styles={st} colors={C} />
+            <Field label={t('manufacturer')}          placeholder={t('me_manufacturer_placeholder')}               value={manufacturer}     onChangeText={setManufacturer}     styles={st} colors={C} />
+            <Field label={t('active_ingredient')}   placeholder={t('me_active_ingredient_placeholder')}     value={activeIngredient} onChangeText={setActiveIngredient} styles={st} colors={C} />
+            <Field label={t('dosage')}              placeholder={t('me_dosage_placeholder')}     value={dosage}           onChangeText={setDosage}           styles={st} colors={C} />
           </View>
 
           {/* ── Form type ── */}
-          <Text style={st.sectionTitle}>Форма выпуска</Text>
+          <Text style={st.sectionTitle}>{t('me_form_type')}</Text>
           <View style={st.chipRow}>
             {FORMS.map(f => (
               <TouchableOpacity
@@ -404,19 +429,19 @@ export function ManualEntryScreen() {
                 style={[st.chip, form === f.value && st.chipActive]}
                 onPress={() => setForm(f.value)} activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 15 }}>{f.emoji}</Text>
-                <Text style={[st.chipText, form === f.value && st.chipTextActive]}>{f.label}</Text>
+                <Icon name={f.icon} size={15} color={form === f.value ? C.white : C.textSecondary} />
+                <Text style={[st.chipText, form === f.value && st.chipTextActive]}>{t(f.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* ── Composition ── */}
-          <Text style={st.sectionTitle}>Состав (компоненты)</Text>
+          <Text style={st.sectionTitle}>{t('me_composition_section')}</Text>
           <View style={st.card}>
             {composition.length > 0 && (
               <View style={st.compHeader}>
-                <Text style={[st.compColLabel, { flex: 1 }]}>Компонент</Text>
-                <Text style={[st.compColLabel, { width: 100 }]}>Количество</Text>
+                <Text style={[st.compColLabel, { flex: 1 }]}>{t('me_component')}</Text>
+                <Text style={[st.compColLabel, { width: 100 }]}>{t('me_amount')}</Text>
                 <View style={{ width: 32 }} />
               </View>
             )}
@@ -424,14 +449,14 @@ export function ManualEntryScreen() {
               <View key={i} style={st.compRow}>
                 <TextInput
                   style={[st.compInput, { flex: 1 }]}
-                  placeholder="Нимесулид, Магний…"
+                  placeholder={t('me_component_placeholder')}
                   placeholderTextColor={C.textTertiary}
                   value={item.name}
                   onChangeText={v => updateComposition(i, 'name', v)}
                 />
                 <TextInput
                   style={[st.compInput, { width: 100 }]}
-                  placeholder="100 мг"
+                  placeholder={t('me_amount_placeholder')}
                   placeholderTextColor={C.textTertiary}
                   value={item.amount}
                   onChangeText={v => updateComposition(i, 'amount', v)}
@@ -443,7 +468,7 @@ export function ManualEntryScreen() {
             ))}
             <TouchableOpacity style={st.addCompBtn} onPress={addCompositionRow} activeOpacity={0.8}>
               <Icon name="plus" size={14} color={C.blue} />
-              <Text style={st.addCompBtnText}>Добавить компонент</Text>
+              <Text style={st.addCompBtnText}>{t('me_add_component')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -457,14 +482,14 @@ export function ManualEntryScreen() {
               <Icon name="auto-fix" size={18} color={C.blueDark} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.blueDark }}>
-                  Авто-теги: {suggestedTags.join(', ')}
+                  {t('me_auto_tags')}: {suggestedTags.join(', ')}
                 </Text>
                 <Text style={{ fontSize: Typography.size.xs, color: C.blueDark, opacity: 0.7, marginTop: 2 }}>
-                  Мы определили категории по названию
+                  {t('me_auto_tags_sub')}
                 </Text>
               </View>
               <TouchableOpacity onPress={applyAutoTags} style={{ backgroundColor: C.blue, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 6 }}>
-                <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.white }}>Применить</Text>
+                <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.white }}>{t('me_apply')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setAutoTagsDismissed(true)}>
                 <Icon name="close" size={16} color={C.blueDark} />
@@ -473,22 +498,22 @@ export function ManualEntryScreen() {
           )}
 
           {/* ── Tags ── */}
-          <Text style={st.sectionTitle}>Применяется при</Text>
+          <Text style={st.sectionTitle}>{t('me_used_for')}</Text>
           <View style={st.chipRow}>
-            {MEDICINE_TAGS.map(t => (
+            {MEDICINE_TAGS.map(tag => (
               <TouchableOpacity
-                key={t.key}
-                style={[st.chip, tags.includes(t.key) && st.chipTagActive]}
-                onPress={() => toggleTag(t.key)} activeOpacity={0.8}
+                key={tag.key}
+                style={[st.chip, tags.includes(tag.key) && st.chipTagActive]}
+                onPress={() => toggleTag(tag.key)} activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 14 }}>{t.emoji}</Text>
-                <Text style={[st.chipText, tags.includes(t.key) && st.chipTagTextActive]}>{t.label}</Text>
+                <Icon name={tag.icon} size={14} color={tags.includes(tag.key) ? C.successDark : C.textSecondary} />
+                <Text style={[st.chipText, tags.includes(tag.key) && st.chipTagTextActive]}>{t(tag.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* ── Contraindications ── */}
-          <Text style={st.sectionTitle}>Противопоказания</Text>
+          <Text style={st.sectionTitle}>{t('me_contraindications')}</Text>
           <View style={st.chipRow}>
             {CONTRAINDICATIONS.map(c => (
               <TouchableOpacity
@@ -496,7 +521,8 @@ export function ManualEntryScreen() {
                 style={[st.chip, warnings.includes(c.key) && st.chipWarnActive]}
                 onPress={() => toggleWarning(c.key)} activeOpacity={0.8}
               >
-                <Text style={[st.chipText, warnings.includes(c.key) && st.chipWarnTextActive]}>{c.label}</Text>
+                <Icon name={c.icon} size={14} color={warnings.includes(c.key) ? C.dangerDark : C.textSecondary} />
+                <Text style={[st.chipText, warnings.includes(c.key) && st.chipWarnTextActive]}>{t(c.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -548,7 +574,7 @@ export function ManualEntryScreen() {
                     style={[st.chip, selectedKitId === k.id && st.chipActive]}
                     onPress={() => setSelectedKitId(k.id)} activeOpacity={0.8}
                   >
-                    <Text style={{ fontSize: 15 }}>{k.icon}</Text>
+                    <Icon name={k.icon} size={15} color={k.colorTag} />
                     <Text style={[st.chipText, selectedKitId === k.id && st.chipTextActive]}>{k.name}</Text>
                   </TouchableOpacity>
                 ))}
@@ -559,6 +585,43 @@ export function ManualEntryScreen() {
               <Text style={st.noKitText}>Сначала создайте аптечку на вкладке «Аптечки»</Text>
             </View>
           )}
+
+          {/* ── Color label ── */}
+          <Text style={st.sectionTitle}>{t('me_color_label')}</Text>
+          <View style={[st.card, { gap: Spacing.sm }]}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
+              {MED_COLOR_SWATCHES.map(c => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => setColorTag(colorTag === c ? undefined : c)}
+                  style={{
+                    width: 36, height: 36, borderRadius: 18,
+                    backgroundColor: c,
+                    borderWidth: colorTag === c ? 3 : 0,
+                    borderColor: C.textPrimary,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                  activeOpacity={0.8}
+                />
+              ))}
+              {colorTag && !MED_COLOR_SWATCHES.includes(colorTag) && (
+                <View style={{
+                  width: 36, height: 36, borderRadius: 18,
+                  backgroundColor: colorTag,
+                  borderWidth: 3, borderColor: C.textPrimary,
+                }} />
+              )}
+            </View>
+            <HueSlider
+              value={colorTag ?? '#78A9FF'}
+              onChange={setColorTag}
+            />
+            {colorTag && (
+              <TouchableOpacity onPress={() => setColorTag(undefined)}>
+                <Text style={{ fontSize: Typography.size.body, color: C.danger, fontWeight: Typography.weight.semibold }}>{t('me_color_clear')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* ── Save ── */}
           <TouchableOpacity style={st.saveBtn} onPress={handleSave} activeOpacity={0.85}>

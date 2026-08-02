@@ -5,7 +5,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { q1, exec } from '../db.js';
 import { config } from '../config.js';
 import { publicUser, type UserRow } from '../serialize.js';
-import { signToken, verifyToken, getUserById, requireAuth, type AuthedRequest } from '../auth.js';
+import { signToken, verifyToken, getUserById, requireAuth, revokeToken, type AuthedRequest } from '../auth.js';
 import { ah, id, now, initialsFrom, HttpError } from '../util.js';
 
 export const authRouter = Router();
@@ -45,7 +45,7 @@ authRouter.post('/register', ah(async (req, res) => {
     `INSERT INTO users (id, nickname, name, surname, email, password_hash, avatar_initials, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [user.id, user.nickname, user.name, user.surname, user.email,
-      bcrypt.hashSync(body.password, 10), user.avatar_initials, user.created_at],
+      await bcrypt.hash(body.password, 10), user.avatar_initials, user.created_at],
   );
 
   res.status(201).json({ token: signToken(user.id), user: publicUser(user) });
@@ -62,7 +62,8 @@ authRouter.post('/login', ah(async (req, res) => {
   const row = await q1<UserRow & { password_hash: string }>(
     'SELECT * FROM users WHERE nickname = $1 OR email = $1', [ident],
   );
-  if (!row || !bcrypt.compareSync(body.password, row.password_hash)) {
+  const passwordOk = row ? await bcrypt.compare(body.password, row.password_hash) : false;
+  if (!row || !passwordOk) {
     throw new HttpError(401, 'Invalid credentials');
   }
   res.json({ token: signToken(row.id), user: publicUser(row) });
@@ -71,6 +72,15 @@ authRouter.post('/login', ah(async (req, res) => {
 authRouter.get('/me', requireAuth, (req: AuthedRequest, res) => {
   res.json({ user: publicUser(req.user!) });
 });
+
+/** Revoke the current token so it can never be reused (logout / sign-out). */
+authRouter.post('/logout', requireAuth, ah(async (req: AuthedRequest, res) => {
+  if (req.tokenJti && req.tokenExp) {
+    // Use the token's actual expiry so the blocklist row is purged at exactly the right time.
+    await revokeToken(req.tokenJti, new Date(req.tokenExp * 1000));
+  }
+  res.json({ ok: true });
+}));
 
 const updateMeSchema = z.object({
   nickname: z.string().trim().min(2).max(32).regex(/^[a-zA-Z0-9_.]+$/, 'invalid nickname').optional(),
@@ -164,8 +174,8 @@ authRouter.post('/google', ah(async (req: AuthedRequest, res) => {
   // 2) Caller has a session and this Google id is unclaimed → link onto it.
   const header = req.header('authorization') ?? '';
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
-  const currentUserId = bearer ? verifyToken(bearer) : null;
-  const current = currentUserId ? await getUserById(currentUserId) : undefined;
+  const currentVerified = bearer ? verifyToken(bearer) : null;
+  const current = currentVerified ? await getUserById(currentVerified.userId) : undefined;
   if (current) {
     // Don't clobber an email already used by a different account.
     let linkEmail = current.email;
@@ -197,7 +207,7 @@ authRouter.post('/google', ah(async (req: AuthedRequest, res) => {
     `INSERT INTO users (id, nickname, name, surname, email, password_hash, avatar_initials, created_at, google_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [user.id, user.nickname, user.name, user.surname, user.email,
-      bcrypt.hashSync(id('goog'), 10), user.avatar_initials, user.created_at, user.google_id],
+      await bcrypt.hash(id('goog'), 10), user.avatar_initials, user.created_at, user.google_id],
   );
   res.status(201).json({ token: signToken(user.id), user: publicUser(user) });
 }));

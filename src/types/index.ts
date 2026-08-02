@@ -31,6 +31,7 @@ export interface Medicine {
   warnings?: string[];
   incompatibleWith?: string[];
   tags?: string[];
+  colorTag?: string;
   addedAt: string;
   updatedAt: string;
 }
@@ -114,10 +115,17 @@ export interface ReminderSettings {
 }
 
 export interface AppSettings {
-  theme: 'light' | 'dark' | 'system';
+  theme: 'light' | 'dark' | 'system' | 'pastel' | 'green' | 'red' | 'mint' | 'dark-pastel' | 'dark-green' | 'dark-red' | 'dark-mint' | 'custom';
+  accentColor?: string;
+  customBg?: string;
+  customCard?: string;
+  customText?: string;
+  useGradient?: boolean;
   language: 'en' | 'ru' | 'tr' | 'ro';
   reminders: ReminderSettings;
   defaultSharingRole: KitAccessRole;
+  /** ISO timestamp of the last successful server pull. Used to skip re-pushing already-synced records. */
+  lastSyncAt?: string;
 }
 
 /** A scheduled medication reminder */
@@ -136,6 +144,29 @@ export interface MedicineReminder {
   lastTakenAt?: string;   // ISO datetime of most recent taken mark
   notes?: string;
   createdAt: string;
+}
+
+// ─── Doctor ──────────────────────────────────────────────────────────────────
+
+export interface Doctor {
+  id: string;
+  name: string;
+  speciality: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  languages?: string[];
+  isFree?: boolean;
+  cost?: string;
+  whatsapp?: string;
+  telegram?: string;
+  viber?: string;
+  photoUri?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Shopping list ────────────────────────────────────────────────────────────
@@ -170,6 +201,46 @@ export interface MedicineIntakeLog {
   createdAt: string;
 }
 
+// ─── Doctor appointments ─────────────────────────────────────────────────────
+
+export interface AppointmentAnalysis {
+  id: string;
+  name: string;
+  fileUri?: string;
+  mimeType?: string;
+  notes?: string;
+  date?: string;
+  createdAt: string;
+}
+
+export interface AppointmentPrescription {
+  id: string;
+  medicineId?: string;
+  medicineName: string;
+  dosage?: string;
+  notes?: string;
+}
+
+export type AppointmentStatus = 'upcoming' | 'completed' | 'cancelled';
+
+export interface DoctorAppointment {
+  id: string;
+  doctorId: string;
+  dateTime: string;             // ISO datetime
+  isOnline: boolean;
+  meetLink?: string;
+  address?: string;
+  description?: string;
+  questionsForDoctor?: string;
+  analyses: AppointmentAnalysis[];
+  prescriptions: AppointmentPrescription[];
+  notes?: string;
+  status: AppointmentStatus;
+  calendarEventId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Navigation ──────────────────────────────────────────────────────────────
 
 export interface Person {
@@ -195,6 +266,8 @@ export interface MedicinePrefill {
   incompatibleWith?: string[];
   barcode?: string;
   tags?: string[];
+  totalQuantity?: number;
+  photoUri?: string;
 }
 
 export type RootStackParamList = {
@@ -251,4 +324,8 @@ export type ProfileStackParamList = {
   Persons: undefined;
   Expiry: undefined;
   MedicineDetail: { medicineId: string; kitId: string };
+  Doctors: undefined;
+  DoctorForm: { doctorId?: string };
+  Appointments: { doctorId: string };
+  AnalysesArchive: undefined;
 };

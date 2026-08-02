@@ -30,7 +30,6 @@ function makeStyles(C: ColorPalette) {
       gap: Spacing.sm,
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
-    kitEmoji:   { fontSize: 32 },
     kitPhoto:   { width: 40, height: 40, borderRadius: 8 },
     kitName:    {
       fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: C.textPrimary,
@@ -58,6 +57,7 @@ function makeStyles(C: ColorPalette) {
       marginHorizontal: Spacing.lg, marginBottom: Spacing.sm,
       backgroundColor: C.bgCardAlt, borderRadius: Radius.md,
       paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     },
     tagHintText: { fontSize: Typography.size.xs, color: C.textTertiary, textAlign: 'center' },
 
@@ -67,7 +67,6 @@ function makeStyles(C: ColorPalette) {
       paddingHorizontal: Spacing.md, marginHorizontal: Spacing.lg,
       marginBottom: Spacing.md, height: 44, gap: Spacing.sm,
     },
-    searchIcon:  { fontSize: 16, color: C.textTertiary },
     searchInput: { flex: 1, fontSize: Typography.size.md, color: C.textPrimary, textAlignVertical: 'center' },
 
     list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
@@ -185,15 +184,15 @@ export function KitDetailScreen() {
           {kit.photoUri ? (
             <Image source={{ uri: kit.photoUri }} style={s.kitPhoto} resizeMode="cover" />
           ) : (
-            <Text style={s.kitEmoji}>{kit.icon}</Text>
+            <Icon name={kit.icon} size={32} color={kit.colorTag} />
           )}
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              {isPinned && <Text style={{ fontSize: 12 }}>📌</Text>}
+              {isPinned && <Icon name="pin" size={12} color={C.textSecondary} />}
               <Text style={s.kitName} numberOfLines={1}>{kit.name}</Text>
             </View>
             <Text style={s.kitSub}>
-              {kit.members.length > 1 ? `👥 ${kit.members.length} ${t('members')}` : `🔒 ${t('personal_kit')}`}
+              <Icon name={kit.members.length > 1 ? 'account-group' : 'lock'} size={12} color={C.textTertiary} />{' '}{kit.members.length > 1 ? `${kit.members.length} ${t('members')}` : t('personal_kit')}
             </Text>
           </View>
         </View>
@@ -212,7 +211,7 @@ export function KitDetailScreen() {
       {/* Tag hint */}
       {availableTags.length === 0 && medicines.length > 0 ? (
         <View style={s.tagHintRow}>
-          <Text style={s.tagHintText}>🏷 {t('add_tags_hint')}</Text>
+          <Icon name="tag-outline" size={13} color={C.textTertiary} /><Text style={s.tagHintText}> {t('add_tags_hint')}</Text>
         </View>
       ) : null}
 
@@ -241,7 +240,7 @@ export function KitDetailScreen() {
 
       {/* Search */}
       <View style={s.searchBox}>
-        <Text style={s.searchIcon}>🔍</Text>
+        <Icon name="magnify" size={16} color={C.textTertiary} />
         <TextInput
           style={s.searchInput}
           placeholder={t('search_medicine_ph')}
@@ -274,7 +273,7 @@ export function KitDetailScreen() {
           const status = getMedicineStatus(item);
           return (
             <TouchableOpacity
-              style={s.medCard}
+              style={[s.medCard, item.colorTag ? { borderLeftWidth: 4, borderLeftColor: item.colorTag } : {}]}
               onPress={() => navigation.navigate('MedicineDetail', { medicineId: item.id, kitId })}
               activeOpacity={0.85}
             >
@@ -283,7 +282,7 @@ export function KitDetailScreen() {
                 <Text style={s.medName}>{item.name}</Text>
                 <Text style={s.medSub}>
                   {item.dosage ? `${item.dosage} · ` : ''}
-                  {item.remainingQuantity} из {item.totalQuantity}
+                  {item.remainingQuantity} {t('shm_share_of')} {item.totalQuantity}
                 </Text>
               </View>
               <StatusBadge status={status} />

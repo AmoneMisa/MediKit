@@ -1,11 +1,11 @@
-import { MMKV } from 'react-native-mmkv';
 import { Platform } from 'react-native';
+import { LazyMMKV } from '../utils/createSecureMMKV';
 
 /**
  * Persistent storage for backend connection + auth.
  * Kept separate from the main data store so clearing app data behaves predictably.
  */
-export const apiStorage = new MMKV({ id: 'medikit-api' });
+export const apiStorage = new LazyMMKV('medikit-api');
 
 // Production hits the deployed server over HTTPS. In dev builds we fall back to the
 // local backend — Android emulators reach the host via 10.0.2.2, iOS via localhost.
@@ -36,7 +36,7 @@ export function apiUrl(path: string): string {
   return `${getBaseUrl()}/api${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-export function wsUrl(token: string): string {
+export function wsUrl(): string {
   const base = getBaseUrl().replace(/^http/, 'ws');
-  return `${base}/ws?token=${encodeURIComponent(token)}`;
+  return `${base}/ws`;
 }

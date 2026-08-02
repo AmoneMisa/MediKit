@@ -10,7 +10,11 @@ export type RealtimeEvent =
   | { type: 'medicine_upserted'; kitId: string; medicine: unknown }
   | { type: 'medicine_deleted'; kitId: string; medicineId: string }
   | { type: 'activity'; kitId: string; event: unknown }
-  | { type: 'notification'; notification: unknown };
+  | { type: 'notification'; notification: unknown }
+  | { type: 'appointment_upserted'; appointment: unknown }
+  | { type: 'appointment_deleted'; appointmentId: string }
+  | { type: 'doctor_upserted'; doctor: unknown }
+  | { type: 'doctor_deleted'; doctorId: string };
 
 type Listener = (event: RealtimeEvent) => void;
 
@@ -30,13 +34,15 @@ class RealtimeClient {
     if (!token || this.ws) return;
     this.closedByUser = false;
     try {
-      this.ws = new WebSocket(wsUrl(token));
+      this.ws = new WebSocket(wsUrl());
     } catch {
       this.scheduleReconnect();
       return;
     }
 
     this.ws.onopen = () => {
+      // Send auth as the very first frame — keeps the token out of URLs and server logs
+      try { this.ws?.send(JSON.stringify({ type: 'auth', token })); } catch {}
       this.reconnectDelay = 1000;
       this.pingTimer = setInterval(() => {
         try { this.ws?.send(JSON.stringify({ type: 'ping' })); } catch {}

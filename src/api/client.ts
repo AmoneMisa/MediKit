@@ -12,6 +12,12 @@ export function getToken(): string | null {
 function setToken(t: string): void { apiStorage.set(KEY_TOKEN, t); }
 export function clearToken(): void { apiStorage.delete(KEY_TOKEN); }
 
+/** Revoke the current session token server-side, then clear it locally. */
+export async function logout(): Promise<void> {
+  await request('/auth/logout', { method: 'POST', auth: true }).catch(() => {});
+  clearToken();
+}
+
 export function getAccountNickname(): string | null {
   return apiStorage.getString(KEY_NICK) ?? null;
 }
@@ -92,7 +98,9 @@ export interface ApiUser {
 }
 
 function randomSecret(): string {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const bytes = new Uint8Array(24); // 192 bits
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(''); // 48-char hex
 }
 
 function sanitizeNickname(raw: string): string {

@@ -50,7 +50,11 @@ const TAG_KEYWORDS: Record<string, string[]> = {
   nerves: [
     'глицин', 'тенотен', 'ново-пассит', 'новопассит', 'персен', 'афобазол',
     'нотта', 'грандаксин', 'феназепам', 'диазепам', 'ноофен',
+    'сертралін', 'сертралин', 'флуоксетин', 'флуоксетін', 'есциталопрам', 'венлафаксин',
+    'амітриптилін', 'амитриптилин', 'пароксетин', 'міртазапін', 'міртазапін',
     'glycine', 'diazepam', 'phenazepam',
+    'sertraline', 'fluoxetine', 'escitalopram', 'venlafaxine', 'amitriptyline',
+    'paroxetine', 'mirtazapine', 'duloxetine', 'citalopram', 'clonazepam',
   ],
   vitamins: [
     'витамин', 'мультивит', 'компливит', 'супрадин', 'алфавит', 'фолиевая',

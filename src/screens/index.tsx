@@ -5,12 +5,17 @@ import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Share,
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
 import type { KitAccessRole } from '../types';
+import { useT } from '../i18n';
+import { useColors, useGradient } from '../context/ThemeContext';
 
 export function ShareKitScreen() {
+  const t = useT();
   const route = useRoute<any>();
   const { kitId } = route.params;
   const kit = useAppStore(s => s.getKit(kitId));
@@ -20,15 +25,15 @@ export function ShareKitScreen() {
 
   async function handleShare(channel: string) {
     const msg =
-      `📦 Аптечка «${kit!.name}» — ${kit!.members.length > 1 ? 'Общая' : 'Личная'}\n` +
-      `Присоединиться: https://medikit.app/kit/${kitId}`;
+      `📦 ${t('sc_kit_word')} «${kit!.name}» — ${kit!.members.length > 1 ? t('sc_kit_shared') : t('sc_kit_personal')}\n` +
+      `${t('sc_join')}: https://medikit.app/kit/${kitId}`;
     await Share.share({ message: msg });
   }
 
-  const ACCESS_LEVELS: { role: KitAccessRole; emoji: string; title: string; desc: string }[] = [
-    { role: 'viewer', emoji: '👁',  title: 'Только просмотр',      desc: 'Видит список, не может редактировать' },
-    { role: 'editor', emoji: '✏️', title: 'Редактор',              desc: 'Может добавлять и изменять препараты' },
-    { role: 'synced', emoji: '🔄', title: 'Полная синхронизация',  desc: 'Видит все изменения в реальном времени' },
+  const ACCESS_LEVELS: { role: KitAccessRole; icon: string; title: string; desc: string }[] = [
+    { role: 'viewer', icon: 'eye',    title: t('sc_access_viewer_title'), desc: t('sc_access_viewer_desc') },
+    { role: 'editor', icon: 'pencil', title: t('sc_access_editor_title'), desc: t('sc_access_editor_desc') },
+    { role: 'synced', icon: 'sync',   title: t('sc_access_synced_title'), desc: t('sc_access_synced_desc') },
   ];
 
   return (
@@ -37,22 +42,22 @@ export function ShareKitScreen() {
         {/* QR block */}
         <View style={ss.qrBlock}>
           <View style={ss.qrPlaceholder}>
-            <Text style={ss.qrText}>QR-код{'\n'}аптечки</Text>
+            <Text style={ss.qrText}>{t('sc_qr_code')}{'\n'}{t('sc_qr_of_kit')}</Text>
           </View>
-          <Text style={ss.kitName}>Аптечка «{kit.name}»</Text>
+          <Text style={ss.kitName}>{t('sc_kit_word')} «{kit.name}»</Text>
           <Text style={ss.kitSub}>
-            {kit.members.length} участник{kit.members.length > 1 ? 'а' : ''}
+            {kit.members.length} {t('sc_participants')}
           </Text>
         </View>
 
         {/* Share buttons */}
-        <ShareBtn emoji="✈️" label="Отправить в Telegram"  bg="#29B6F6" onPress={() => handleShare('tg')} />
-        <ShareBtn emoji="💬" label="Отправить в WhatsApp"  bg="#25D366" onPress={() => handleShare('wa')} />
-        <ShareBtn emoji="🔗" label="Скопировать ссылку"   bg={Colors.bgCardAlt} textColor={Colors.blue} onPress={() => handleShare('copy')} />
+        <ShareBtn iconName="send"    label={t('share_telegram')}  bg="#29B6F6" onPress={() => handleShare('tg')} />
+        <ShareBtn iconName="message" label={t('share_whatsapp')}  bg="#25D366" onPress={() => handleShare('wa')} />
+        <ShareBtn iconName="link"    label={t('copy_link')}   bg={Colors.bgCardAlt} textColor={Colors.blue} onPress={() => handleShare('copy')} />
 
         {/* Access level */}
         <View style={ss.card}>
-          <Text style={ss.cardTitle}>Уровень доступа</Text>
+          <Text style={ss.cardTitle}>{t('sc_access_level')}</Text>
           {ACCESS_LEVELS.map(a => (
             <TouchableOpacity
               key={a.role}
@@ -61,7 +66,7 @@ export function ShareKitScreen() {
               activeOpacity={0.8}
             >
               <View style={ss.accessAvatar}>
-                <Text style={{ fontSize: 16 }}>{a.emoji}</Text>
+                <Icon name={a.icon} size={16} color={Colors.textSecondary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={ss.accessName}>{a.title}</Text>
@@ -74,7 +79,7 @@ export function ShareKitScreen() {
 
         {/* Members */}
         <View style={ss.card}>
-          <Text style={ss.cardTitle}>Участники ({kit.members.length})</Text>
+          <Text style={ss.cardTitle}>{t('members')} ({kit.members.length})</Text>
           {kit.members.map(m => (
             <View key={m.userId} style={ss.memberRow}>
               <View style={ss.memberAvatar}>
@@ -83,7 +88,7 @@ export function ShareKitScreen() {
               <Text style={ss.memberName}>{m.name}</Text>
               <View style={[ss.rolePill, { backgroundColor: m.role === 'owner' ? Colors.blueLight : Colors.successLight }]}>
                 <Text style={[ss.roleText, { color: m.role === 'owner' ? Colors.blueDark : Colors.successDark }]}>
-                  {roleLabel(m.role)}
+                  {roleLabel(m.role, t)}
                 </Text>
               </View>
             </View>
@@ -94,17 +99,22 @@ export function ShareKitScreen() {
   );
 }
 
-function ShareBtn({ emoji, label, bg, textColor = '#fff', onPress }: any) {
+function ShareBtn({ iconName, label, bg, textColor = '#fff', onPress }: any) {
   return (
     <TouchableOpacity style={[ss.shareBtn, { backgroundColor: bg }]} onPress={onPress} activeOpacity={0.85}>
-      <Text style={{ fontSize: 18 }}>{emoji}</Text>
+      <Icon name={iconName} size={18} color={textColor} />
       <Text style={[ss.shareBtnText, { color: textColor }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-function roleLabel(r: KitAccessRole) {
-  return { owner: 'Владелец', editor: 'Редактор', viewer: 'Просмотр', synced: 'Синк' }[r];
+function roleLabel(r: KitAccessRole, t: (k: any) => string) {
+  return {
+    owner: t('sc_role_owner'),
+    editor: t('sc_role_editor'),
+    viewer: t('sc_role_viewer'),
+    synced: t('sc_role_synced'),
+  }[r];
 }
 
 const ss = StyleSheet.create({
@@ -172,37 +182,58 @@ const ss = StyleSheet.create({
 //  ProfileScreen
 // ────────────────────────────────────────────────────────────────────────────
 export function ProfileScreen() {
-  const user = useAppStore(s => s.user);
-  const kits = useAppStore(s => s.kits);
+  const t          = useT();
+  const user       = useAppStore(s => s.user);
+  const kits       = useAppStore(s => s.kits);
+  const navigation = useNavigation<any>();
+  const C          = useColors();
+  const gradient   = useGradient();
 
   const ITEMS = [
-    { emoji: '🏠', label: `Мои аптечки (${kits.length})`,   screen: 'KitList' },
-    { emoji: '👥', label: 'Общий доступ',                    screen: 'SyncMembers' },
-    { emoji: '🔔', label: 'Уведомления',                     screen: 'Settings' },
-    { emoji: '⚙️', label: 'Настройки',                      screen: 'Settings' },
-    { emoji: '❓', label: 'Помощь и поддержка',              screen: 'Support' },
+    { icon: 'home',          label: `${t('sc_my_kits')} (${kits.length})`, onPress: () => navigation.navigate('KitsTab') },
+    { icon: 'account-group', label: t('pf_contacts'),                       onPress: () => navigation.navigate('Persons') },
+    { icon: 'calendar',      label: t('pf_expiry_dates'),                   onPress: () => navigation.navigate('Expiry') },
+    { icon: 'cog',           label: t('settings'),                          onPress: () => navigation.navigate('Settings') },
+    { icon: 'help-circle',   label: t('sc_help_support'),                   onPress: () => navigation.navigate('Support') },
   ];
 
   return (
     <SafeAreaView style={ps.root}>
       <ScrollView contentContainerStyle={ps.scroll}>
         {/* Hero */}
-        <View style={ps.hero}>
-          <View style={ps.avatar}>
-            <Text style={ps.avatarText}>{user.avatarInitials}</Text>
+        {gradient.enabled ? (
+          <LinearGradient
+            colors={gradient.colors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={ps.hero}
+          >
+            <View style={[ps.avatar, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+              <Text style={[ps.avatarText, { color: Colors.white }]}>{user.avatarInitials}</Text>
+            </View>
+            <View>
+              <Text style={ps.name}>{user.name}</Text>
+              <Text style={ps.email}>{user.email}</Text>
+            </View>
+          </LinearGradient>
+        ) : (
+          <View style={[ps.hero, { backgroundColor: C.blue }]}>
+            <View style={ps.avatar}>
+              <Text style={[ps.avatarText, { color: C.blue }]}>{user.avatarInitials}</Text>
+            </View>
+            <View>
+              <Text style={ps.name}>{user.name}</Text>
+              <Text style={ps.email}>{user.email}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={ps.name}>{user.name}</Text>
-            <Text style={ps.email}>{user.email}</Text>
-          </View>
-        </View>
+        )}
 
         {/* Items */}
         <View style={ps.group}>
           {ITEMS.map((item, i) => (
             <View key={item.label}>
-              <TouchableOpacity style={ps.item} activeOpacity={0.8}>
-                <Text style={ps.itemEmoji}>{item.emoji}</Text>
+              <TouchableOpacity style={ps.item} activeOpacity={0.8} onPress={item.onPress}>
+                <View style={ps.itemIcon}><Icon name={item.icon} size={18} color={Colors.textSecondary} /></View>
                 <Text style={ps.itemLabel}>{item.label}</Text>
                 <Text style={ps.chevron}>›</Text>
               </TouchableOpacity>
@@ -212,7 +243,7 @@ export function ProfileScreen() {
         </View>
 
         <TouchableOpacity style={ps.signout}>
-          <Text style={ps.signoutText}>Выйти из аккаунта</Text>
+          <Text style={ps.signoutText}>{t('sc_sign_out')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -224,14 +255,14 @@ const ps = StyleSheet.create({
   scroll: { padding: Spacing.lg, paddingBottom: 40 },
   hero: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,
-    backgroundColor: Colors.blue, borderRadius: Radius.xl,
+    borderRadius: Radius.xl, overflow: 'hidden',
     padding: Spacing.lg, marginBottom: Spacing.lg,
   },
   avatar: {
     width: 62, height: 62, borderRadius: 31,
-    backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 24, fontWeight: '800', color: Colors.blue },
+  avatarText: { fontSize: 24, fontWeight: '800', color: Colors.white },
   name:  { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: Colors.white },
   email: { fontSize: Typography.size.body, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   group: {
@@ -239,7 +270,7 @@ const ps = StyleSheet.create({
     marginBottom: Spacing.md, ...Shadow.card, overflow: 'hidden',
   },
   item:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg },
-  itemEmoji: { fontSize: 18, width: 26, textAlign: 'center' },
+  itemIcon: { width: 26, alignItems: 'center' },
   itemLabel: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.textPrimary },
   chevron:   { fontSize: 18, color: Colors.textTertiary },
   divider:   { height: 1, backgroundColor: Colors.borderLight, marginLeft: 58 },
@@ -252,6 +283,7 @@ const ps = StyleSheet.create({
 //  SettingsScreen
 // ────────────────────────────────────────────────────────────────────────────
 export function SettingsScreen() {
+  const t = useT();
   const settings = useAppStore(s => s.settings);
   const update   = useAppStore(s => s.updateSettings);
 
@@ -267,66 +299,70 @@ export function SettingsScreen() {
   return (
     <SafeAreaView style={stl.root}>
       <ScrollView contentContainerStyle={stl.scroll}>
-        <SettingGroup title="Уведомления">
+        <SettingGroup title={t('notif_section')}>
           <SettingToggle
-            emoji="🔔" label="Push-уведомления"
+            icon="bell" label={t('push_enabled')}
             value={settings.reminders.pushEnabled}
             onToggle={() => toggle('pushEnabled')}
           />
           <SettingToggle
-            emoji="📦" label="Предупреждение о запасах"
+            icon="package-variant" label={t('low_stock_enabled')}
             value={settings.reminders.lowStockEnabled}
             onToggle={() => toggle('lowStockEnabled')}
           />
           <SettingToggle
-            emoji="👥" label="Активность в общих аптечках"
+            icon="account-group" label={t('kit_activity_enabled')}
             value={settings.reminders.kitActivityEnabled}
             onToggle={() => toggle('kitActivityEnabled')}
           />
           <SettingToggle
-            emoji="⚠️" label="Предупреждения о совместимости"
+            icon="alert" label={t('interaction_warnings_enabled')}
             value={settings.reminders.interactionWarningsEnabled}
             onToggle={() => toggle('interactionWarningsEnabled')}
           />
         </SettingGroup>
 
-        <SettingGroup title="Напоминать за">
+        <SettingGroup title={t('sc_remind_before')}>
           {[90, 30, 7].map(d => (
             <View key={d} style={stl.item}>
-              <Text style={stl.itemEmoji}>📅</Text>
-              <Text style={stl.itemLabel}>{d} дней до истечения</Text>
+              <View style={stl.itemIcon}><Icon name="calendar" size={18} color={Colors.textSecondary} /></View>
+              <Text style={stl.itemLabel}>{d} {t('sc_days_before_expiry')}</Text>
               <View style={[stl.dot, { backgroundColor: settings.reminders.expiryDaysBefore.includes(d) ? Colors.success : Colors.border }]} />
             </View>
           ))}
         </SettingGroup>
 
-        <SettingGroup title="Внешний вид">
-          {(['light','dark','pastel'] as const).map(t => (
+        <SettingGroup title={t('sc_appearance')}>
+          {([
+            { key: 'light',  icon: 'weather-sunny' },
+            { key: 'dark',   icon: 'weather-night' },
+            { key: 'system', icon: 'cellphone' },
+            { key: 'pastel', icon: 'flower' },
+            { key: 'green',  icon: 'leaf' },
+            { key: 'red',    icon: 'flower-tulip' },
+            { key: 'mint',   icon: 'leaf-maple' },
+          ] as const).map(th => (
             <TouchableOpacity
-              key={t}
+              key={th.key}
               style={stl.item}
-              onPress={() => update({ theme: t })}
+              onPress={() => update({ theme: th.key })}
             >
-              <Text style={stl.itemEmoji}>
-                {t === 'light' ? '☀️' : t === 'dark' ? '🌙' : '🌸'}
-              </Text>
-              <Text style={stl.itemLabel}>
-                {t === 'light' ? 'Светлая' : t === 'dark' ? 'Тёмная' : 'Пастель'}
-              </Text>
-              {settings.theme === t && <Text style={{ color: Colors.success, fontSize: 18 }}>✓</Text>}
+              <View style={stl.itemIcon}><Icon name={th.icon} size={18} color={Colors.textSecondary} /></View>
+              <Text style={stl.itemLabel}>{t(`theme_${th.key}` as any)}</Text>
+              {settings.theme === th.key && <Icon name="check" size={18} color={Colors.success} />}
             </TouchableOpacity>
           ))}
         </SettingGroup>
 
-        <SettingGroup title="Данные">
+        <SettingGroup title={t('sc_data')}>
           <TouchableOpacity style={stl.item}>
-            <Text style={stl.itemEmoji}>📤</Text>
-            <Text style={stl.itemLabel}>Экспортировать данные</Text>
+            <View style={stl.itemIcon}><Icon name="export-variant" size={18} color={Colors.textSecondary} /></View>
+            <Text style={stl.itemLabel}>{t('sc_export_data')}</Text>
             <Text style={{ fontSize: 18, color: Colors.textTertiary }}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={stl.item}>
-            <Text style={stl.itemEmoji}>🗑️</Text>
-            <Text style={[stl.itemLabel, { color: Colors.danger }]}>Удалить аккаунт</Text>
+            <View style={stl.itemIcon}><Icon name="trash-can" size={18} color={Colors.danger} /></View>
+            <Text style={[stl.itemLabel, { color: Colors.danger }]}>{t('sc_delete_account')}</Text>
             <Text style={{ fontSize: 18, color: Colors.textTertiary }}>›</Text>
           </TouchableOpacity>
         </SettingGroup>
@@ -344,10 +380,10 @@ function SettingGroup({ title, children }: { title: string; children: React.Reac
   );
 }
 
-function SettingToggle({ emoji, label, value, onToggle }: { emoji: string; label: string; value: boolean; onToggle: () => void }) {
+function SettingToggle({ icon, label, value, onToggle }: { icon: string; label: string; value: boolean; onToggle: () => void }) {
   return (
     <TouchableOpacity style={stl.item} onPress={onToggle} activeOpacity={0.8}>
-      <Text style={stl.itemEmoji}>{emoji}</Text>
+      <View style={stl.itemIcon}><Icon name={icon} size={18} color={Colors.textSecondary} /></View>
       <Text style={stl.itemLabel}>{label}</Text>
       <View style={[stl.toggle, !value && stl.toggleOff]}>
         <View style={[stl.toggleThumb, value && stl.toggleThumbOn]} />
@@ -372,7 +408,7 @@ const stl = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
     padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  itemEmoji: { fontSize: 18, width: 26, textAlign: 'center' },
+  itemIcon: { width: 26, alignItems: 'center' },
   itemLabel: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.textPrimary },
   dot: { width: 12, height: 12, borderRadius: 6 },
   toggle: {
@@ -392,23 +428,24 @@ const stl = StyleSheet.create({
 //  Stub screens (filled with placeholder UI)
 // ────────────────────────────────────────────────────────────────────────────
 
-function StubScreen({ title, emoji }: { title: string; emoji: string }) {
+function StubScreen({ title, icon }: { title: string; icon: string }) {
+  const t = useT();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: 52, marginBottom: 16 }}>{emoji}</Text>
+      <Icon name={icon} size={52} color={Colors.textTertiary} style={{ marginBottom: 16 }} />
       <Text style={{ fontSize: 20, fontWeight: '700', color: Colors.textPrimary }}>{title}</Text>
-      <Text style={{ fontSize: 14, color: Colors.textSecondary, marginTop: 8 }}>Экран в разработке</Text>
+      <Text style={{ fontSize: 14, color: Colors.textSecondary, marginTop: 8 }}>{t('sc_screen_in_dev')}</Text>
     </SafeAreaView>
   );
 }
 
-export const OnboardingScreen    = () => <StubScreen emoji="💊" title="Добро пожаловать в MediKit" />;
-export const ScanMedicineScreen  = () => <StubScreen emoji="📷" title="Сканирование" />;
-export const ManualEntryScreen   = () => <StubScreen emoji="✏️" title="Ввод вручную" />;
-export const ShareMedicineScreen = () => <StubScreen emoji="↗"  title="Поделиться препаратом" />;
-export const InteractionScreen   = () => <StubScreen emoji="⚗️" title="Совместимость" />;
-export const SyncMembersScreen   = () => <StubScreen emoji="👥" title="Участники" />;
-export const ActivityHistoryScreen = () => <StubScreen emoji="📋" title="История изменений" />;
-export const CreateEditKitScreen = () => <StubScreen emoji="🏡" title="Новая аптечка" />;
-export const ReminderSettingsScreen = () => <StubScreen emoji="⏰" title="Напоминания" />;
-export const SupportScreen       = () => <StubScreen emoji="❓" title="Помощь" />;
+export const OnboardingScreen    = () => { const t = useT(); return <StubScreen icon="pill"            title={t('sc_welcome_medikit')} />; };
+export const ScanMedicineScreen  = () => { const t = useT(); return <StubScreen icon="camera"          title={t('sc_scanning')} />; };
+export const ManualEntryScreen   = () => { const t = useT(); return <StubScreen icon="pencil"          title={t('sc_manual_entry')} />; };
+export const ShareMedicineScreen = () => { const t = useT(); return <StubScreen icon="share"           title={t('share_medicine')} />; };
+export const InteractionScreen   = () => { const t = useT(); return <StubScreen icon="flask"           title={t('sc_compatibility')} />; };
+export const SyncMembersScreen   = () => { const t = useT(); return <StubScreen icon="account-group"   title={t('members')} />; };
+export const ActivityHistoryScreen = () => { const t = useT(); return <StubScreen icon="clipboard-list" title={t('sc_change_history')} />; };
+export const CreateEditKitScreen = () => { const t = useT(); return <StubScreen icon="home"            title={t('sc_new_kit')} />; };
+export const ReminderSettingsScreen = () => { const t = useT(); return <StubScreen icon="bell"         title={t('reminders')} />; };
+export const SupportScreen       = () => { const t = useT(); return <StubScreen icon="help-circle"    title={t('sc_help')} />; };

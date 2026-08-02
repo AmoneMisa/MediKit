@@ -58,7 +58,6 @@ function makeStyles(C: ColorPalette) {
     metaChipForm: { color: C.accent, backgroundColor: C.accentLight },
     chevron: { marginLeft: Spacing.sm },
     empty: { alignItems: 'center', paddingTop: 60 },
-    emptyEmoji: { fontSize: 48, marginBottom: Spacing.md },
     emptyTitle: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: C.textPrimary, marginBottom: Spacing.sm },
     emptySub: {
       fontSize: Typography.size.body, color: C.textSecondary,
@@ -145,7 +144,7 @@ export function SearchMedicineScreen() {
           query.trim().length > 1 ? (
             apiLoading ? null : (
               <View style={s.empty}>
-                <Text style={s.emptyEmoji}>🔍</Text>
+                <Icon name="magnify" size={48} color={C.textTertiary} style={{ marginBottom: Spacing.md }} />
                 <Text style={s.emptyTitle}>Не найдено</Text>
                 <Text style={s.emptySub}>Попробуйте другое написание или введите данные вручную</Text>
                 <TouchableOpacity

@@ -41,21 +41,24 @@ export function AddMedicineScreen() {
 
   const OPTIONS = useMemo(() => [
     {
-      emoji:    '📷',
+      icon:     'barcode-scan',
+      iconColor: '#2A80CC',
       bg:       '#C8E8FF',
       title:    t('scan_package'),
       subtitle: t('scan_package_sub'),
       onPress:  () => navigation.navigate('ScanMedicine', { kitId }),
     },
     {
-      emoji:    '🔍',
+      icon:     'magnify',
+      iconColor: '#6A3DCC',
       bg:       '#D8C8FF',
       title:    t('find_in_db'),
       subtitle: t('find_in_db_sub'),
       onPress:  () => navigation.navigate('SearchMedicine', { kitId }),
     },
     {
-      emoji:    '✏️',
+      icon:     'pencil-outline',
+      iconColor: '#2A8C5A',
       bg:       '#C8FFD8',
       title:    t('enter_manually'),
       subtitle: t('enter_manually_sub'),
@@ -72,7 +75,7 @@ export function AddMedicineScreen() {
         {OPTIONS.map(o => (
           <TouchableOpacity key={o.title} style={s.option} onPress={o.onPress} activeOpacity={0.85}>
             <View style={[s.optIcon, { backgroundColor: o.bg }]}>
-              <Text style={{ fontSize: 24 }}>{o.emoji}</Text>
+              <Icon name={o.icon} size={26} color={o.iconColor} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.optTitle}>{o.title}</Text>

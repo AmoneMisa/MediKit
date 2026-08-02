@@ -34,6 +34,7 @@ const medicineSchema = z.object({
   warnings: z.array(z.string()).optional(),
   incompatibleWith: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
+  colorTag: z.string().optional(),
   addedAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
@@ -58,8 +59,8 @@ kitMedicinesRouter.post('/:kitId/medicines', ah(async (req: AuthedRequest, res) 
        (id, kit_id, name, manufacturer, active_ingredient, dosage, form, composition,
         total_quantity, remaining_quantity, start_date, expiration_date, storage_notes,
         notes, photo_uri, description, usage_notes, warnings, incompatible_with, tags,
-        added_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        color_tag, added_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
      ON CONFLICT (id) DO UPDATE SET
        name = EXCLUDED.name, manufacturer = EXCLUDED.manufacturer,
        active_ingredient = EXCLUDED.active_ingredient, dosage = EXCLUDED.dosage,
@@ -70,7 +71,7 @@ kitMedicinesRouter.post('/:kitId/medicines', ah(async (req: AuthedRequest, res) 
        photo_uri = EXCLUDED.photo_uri, description = EXCLUDED.description,
        usage_notes = EXCLUDED.usage_notes, warnings = EXCLUDED.warnings,
        incompatible_with = EXCLUDED.incompatible_with, tags = EXCLUDED.tags,
-       updated_at = EXCLUDED.updated_at
+       color_tag = EXCLUDED.color_tag, updated_at = EXCLUDED.updated_at
      RETURNING (xmax = 0) AS inserted`,
     [
       m.id, req.params.kitId, m.name, m.manufacturer ?? null, m.activeIngredient ?? null,
@@ -79,7 +80,8 @@ kitMedicinesRouter.post('/:kitId/medicines', ah(async (req: AuthedRequest, res) 
       m.storageNotes ?? null, m.notes ?? null, m.photoUri ?? null, m.description ?? null,
       m.usageNotes ?? null, m.warnings ? JSON.stringify(m.warnings) : null,
       m.incompatibleWith ? JSON.stringify(m.incompatibleWith) : null,
-      m.tags ? JSON.stringify(m.tags) : null, m.addedAt ?? ts, m.updatedAt ?? ts,
+      m.tags ? JSON.stringify(m.tags) : null, m.colorTag ?? null,
+      m.addedAt ?? ts, m.updatedAt ?? ts,
     ],
   );
 
@@ -109,7 +111,7 @@ kitMedicinesRouter.patch('/:kitId/medicines/:medId', ah(async (req: AuthedReques
     totalQuantity: 'total_quantity', remainingQuantity: 'remaining_quantity',
     startDate: 'start_date', expirationDate: 'expiration_date', storageNotes: 'storage_notes',
     notes: 'notes', photoUri: 'photo_uri', description: 'description', usageNotes: 'usage_notes',
-    warnings: 'warnings', incompatibleWith: 'incompatible_with', tags: 'tags',
+    warnings: 'warnings', incompatibleWith: 'incompatible_with', tags: 'tags', colorTag: 'color_tag',
   };
   const jsonCols = new Set(['composition', 'warnings', 'incompatible_with', 'tags']);
 

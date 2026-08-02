@@ -34,6 +34,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCalendarsUsageDescription</key>
+	<string>MediKit needs calendar access to add doctor appointment reminders to your calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>MediKit needs calendar access to add doctor appointment reminders to your calendar.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UILaunchStoryboardName</key>

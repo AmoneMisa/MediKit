@@ -203,7 +203,7 @@ export function ShoppingListScreen() {
   }
 
   function saveManual() {
-    if (!manualName.trim()) { Alert.alert('Введите название'); return; }
+    if (!manualName.trim()) { Alert.alert(t('shop_enter_name')); return; }
     addItem({
       id:        `shop-${Date.now()}`,
       name:      manualName.trim(),
@@ -218,7 +218,7 @@ export function ShoppingListScreen() {
   function addFromSearch(prefill: MedicinePrefill) {
     addItem({
       id:        `shop-${Date.now()}`,
-      name:      prefill.name ?? 'Препарат',
+      name:      prefill.name ?? t('shop_default_name'),
       dosage:    prefill.dosage,
       quantity:  1,
       prefill,
@@ -248,7 +248,7 @@ export function ShoppingListScreen() {
 
   function confirmBought() {
     if (!buyItem) return;
-    if (!buyKitId) { Alert.alert('Выберите аптечку'); return; }
+    if (!buyKitId) { Alert.alert(t('shop_choose_kit_alert')); return; }
     const kit = kits.find(k => k.id === buyKitId);
     const now = new Date().toISOString();
     const expiry = new Date();
@@ -273,7 +273,7 @@ export function ShoppingListScreen() {
     });
     deleteItem(buyItem.id);
     setMode('none');
-    Alert.alert('Добавлено!', `«${buyItem.name}» добавлен в аптечку «${kit?.name ?? ''}»`);
+    Alert.alert(t('shop_added'), `«${buyItem.name}» ${t('shop_added_to_kit')} «${kit?.name ?? ''}»`);
   }
 
   const kitMedicines = useMemo(
@@ -348,11 +348,11 @@ export function ShoppingListScreen() {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setMode('none')}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={[s.sheet, { paddingBottom: Math.max(Spacing.xl, insets.bottom + Spacing.lg) }]}>
-              <Text style={s.sheetTitle}>Добавить в список</Text>
+              <Text style={s.sheetTitle}>{t('add_to_list')}</Text>
               {[
-                { icon: 'pencil-plus', bg: C.blueLight, title: 'Ввести вручную', sub: 'Название, дозировка, количество', onPress: openManual },
-                { icon: 'magnify', bg: C.successLight, title: 'Найти в базе', sub: 'Поиск по названию или веществу', onPress: () => { setSearchQuery(''); setSearchResults([]); setMode('search'); } },
-                { icon: 'medical-bag', bg: C.accentLight, title: 'Из аптечки', sub: 'Выбрать из имеющихся препаратов', onPress: () => { setSelectedKitForPick(kits[0]?.id ?? ''); setMode('fromKit'); } },
+                { icon: 'pencil-plus', bg: C.blueLight, title: t('enter_manually'), sub: t('enter_manually_sub'), onPress: openManual },
+                { icon: 'magnify', bg: C.successLight, title: t('find_in_db'), sub: t('find_in_db_sub'), onPress: () => { setSearchQuery(''); setSearchResults([]); setMode('search'); } },
+                { icon: 'medical-bag', bg: C.accentLight, title: t('shop_from_kit'), sub: t('shop_from_kit_sub'), onPress: () => { setSelectedKitForPick(kits[0]?.id ?? ''); setMode('fromKit'); } },
               ].map(opt => (
                 <TouchableOpacity key={opt.title} style={s.sheetOption} onPress={opt.onPress} activeOpacity={0.8}>
                   <View style={[s.sheetOptionIcon, { backgroundColor: opt.bg }]}>
@@ -374,49 +374,49 @@ export function ShoppingListScreen() {
       <Modal visible={mode === 'manual'} transparent animationType="slide">
         <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[s.sheet, { paddingBottom: Math.max(Spacing.xl, insets.bottom + Spacing.lg) }]}>
-            <Text style={s.sheetTitle}>Добавить вручную</Text>
-            <Text style={s.formLabel}>Название *</Text>
+            <Text style={s.sheetTitle}>{t('shop_add_manual')}</Text>
+            <Text style={s.formLabel}>{t('shop_name_required')}</Text>
             <TextInput
               style={s.formInput}
-              placeholder="Название препарата"
+              placeholder={t('shop_name_placeholder')}
               placeholderTextColor={C.textTertiary}
               value={manualName}
               onChangeText={setManualName}
               autoFocus
             />
-            <Text style={s.formLabel}>Дозировка</Text>
+            <Text style={s.formLabel}>{t('shop_dosage')}</Text>
             <TextInput
               style={s.formInput}
-              placeholder="500 мг, 5 мл…"
+              placeholder={t('shop_dosage_placeholder')}
               placeholderTextColor={C.textTertiary}
               value={manualDosage}
               onChangeText={setManualDosage}
             />
-            <Text style={s.formLabel}>Количество</Text>
+            <Text style={s.formLabel}>{t('quantity')}</Text>
             <View style={s.qtyRow}>
               <TouchableOpacity style={s.qtyBtn} onPress={() => setManualQty(q => Math.max(1, q - 1))}>
                 <Icon name="minus" size={18} color={C.blue} />
               </TouchableOpacity>
               <View style={s.qtyValue}>
-                <Text style={s.qtyValueText}>{manualQty} шт</Text>
+                <Text style={s.qtyValueText}>{manualQty} {t('pcs')}</Text>
               </View>
               <TouchableOpacity style={s.qtyBtn} onPress={() => setManualQty(q => q + 1)}>
                 <Icon name="plus" size={18} color={C.blue} />
               </TouchableOpacity>
             </View>
-            <Text style={s.formLabel}>Заметки</Text>
+            <Text style={s.formLabel}>{t('shop_notes')}</Text>
             <TextInput
               style={s.formInput}
-              placeholder="Марка, аналог…"
+              placeholder={t('shop_notes_placeholder')}
               placeholderTextColor={C.textTertiary}
               value={manualNotes}
               onChangeText={setManualNotes}
             />
             <TouchableOpacity style={s.saveBtn} onPress={saveManual} activeOpacity={0.85}>
-              <Text style={s.saveBtnText}>Добавить в список</Text>
+              <Text style={s.saveBtnText}>{t('add_to_list')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.cancelBtn} onPress={() => setMode('menu')}>
-              <Text style={s.cancelText}>Назад</Text>
+              <Text style={s.cancelText}>{t('back')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -426,12 +426,12 @@ export function ShoppingListScreen() {
       <Modal visible={mode === 'search'} transparent animationType="slide">
         <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[s.sheet, { maxHeight: '80%', paddingBottom: Math.max(Spacing.xl, insets.bottom + Spacing.lg) }]}>
-            <Text style={s.sheetTitle}>Поиск препарата</Text>
+            <Text style={s.sheetTitle}>{t('shop_search_title')}</Text>
             <View style={s.searchRow}>
               <Icon name="magnify" size={18} color={C.textTertiary} />
               <TextInput
                 style={s.searchInput}
-                placeholder="Название или действующее вещество"
+                placeholder={t('shop_search_placeholder')}
                 placeholderTextColor={C.textTertiary}
                 value={searchQuery}
                 onChangeText={q => { setSearchQuery(q); runSearch(q); }}
@@ -455,12 +455,12 @@ export function ShoppingListScreen() {
               ))}
               {searchResults.length === 0 && searchQuery.length > 1 && (
                 <Text style={{ color: C.textTertiary, textAlign: 'center', padding: Spacing.lg, fontSize: Typography.size.body }}>
-                  Ничего не найдено
+                  {t('nothing_found')}
                 </Text>
               )}
             </ScrollView>
             <TouchableOpacity style={s.cancelBtn} onPress={() => setMode('menu')}>
-              <Text style={s.cancelText}>Назад</Text>
+              <Text style={s.cancelText}>{t('back')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -470,12 +470,12 @@ export function ShoppingListScreen() {
       <Modal visible={mode === 'fromKit'} transparent animationType="slide">
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setMode('none')}>
           <View style={[s.sheet, { maxHeight: '85%', paddingBottom: Math.max(Spacing.xl, insets.bottom + Spacing.lg) }]}>
-            <Text style={s.sheetTitle}>Выбрать из аптечки</Text>
+            <Text style={s.sheetTitle}>{t('shop_pick_from_kit')}</Text>
             {kits.length === 0 ? (
-              <Text style={{ color: C.textSecondary, padding: Spacing.md }}>Нет аптечек</Text>
+              <Text style={{ color: C.textSecondary, padding: Spacing.md }}>{t('no_kits')}</Text>
             ) : (
               <>
-                <Text style={s.sectionLabel}>Аптечка</Text>
+                <Text style={s.sectionLabel}>{t('kit_label')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.sm }}>
                   {kits.map(kit => (
                     <TouchableOpacity
@@ -484,15 +484,15 @@ export function ShoppingListScreen() {
                       onPress={() => setSelectedKitForPick(kit.id)}
                       activeOpacity={0.8}
                     >
-                      <Text style={{ fontSize: 16 }}>{kit.icon}</Text>
+                      <Icon name={kit.icon} size={16} color={kit.colorTag} />
                       <Text style={[s.kitChipText, selectedKitForPick === kit.id && s.kitChipTextActive]}>{kit.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-                <Text style={s.sectionLabel}>Препараты</Text>
+                <Text style={s.sectionLabel}>{t('shop_medicines')}</Text>
                 <ScrollView style={{ maxHeight: 300 }}>
                   {kitMedicines.length === 0 ? (
-                    <Text style={{ color: C.textTertiary, padding: Spacing.md, fontSize: Typography.size.body }}>В этой аптечке нет препаратов</Text>
+                    <Text style={{ color: C.textTertiary, padding: Spacing.md, fontSize: Typography.size.body }}>{t('shop_kit_empty')}</Text>
                   ) : kitMedicines.map(med => (
                     <TouchableOpacity
                       key={med.id}
@@ -511,7 +511,7 @@ export function ShoppingListScreen() {
               </>
             )}
             <TouchableOpacity style={s.cancelBtn} onPress={() => setMode('none')}>
-              <Text style={s.cancelText}>Закрыть</Text>
+              <Text style={s.cancelText}>{t('close')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -521,10 +521,10 @@ export function ShoppingListScreen() {
       <Modal visible={mode === 'buyConfirm'} transparent animationType="slide">
         <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[s.buySheet, { paddingBottom: Math.max(Spacing.xl, insets.bottom + Spacing.lg) }]}>
-            <Text style={s.buyTitle}>Купил(а)! 🎉</Text>
-            <Text style={s.buySub}>Добавить «{buyItem?.name}» в аптечку</Text>
+            <Text style={s.buyTitle}>{t('shop_bought_title')}</Text>
+            <Text style={s.buySub}>{`${t('shop_add_prefix')} «${buyItem?.name}» ${t('shop_add_suffix')}`}</Text>
 
-            <Text style={s.sectionLabel}>В какую аптечку?</Text>
+            <Text style={s.sectionLabel}>{t('shop_which_kit')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.sm }}>
               {kits.map(kit => (
                 <TouchableOpacity
@@ -533,19 +533,19 @@ export function ShoppingListScreen() {
                   onPress={() => setBuyKitId(kit.id)}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontSize: 16 }}>{kit.icon}</Text>
+                  <Icon name={kit.icon} size={16} color={kit.colorTag} />
                   <Text style={[s.kitChipText, buyKitId === kit.id && s.kitChipTextActive]}>{kit.name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            <Text style={s.sectionLabel}>Сколько купил(а)?</Text>
+            <Text style={s.sectionLabel}>{t('shop_how_many')}</Text>
             <View style={s.qtyRow}>
               <TouchableOpacity style={s.qtyBtn} onPress={() => setBuyQty(q => Math.max(1, q - 1))}>
                 <Icon name="minus" size={18} color={C.blue} />
               </TouchableOpacity>
               <View style={s.qtyValue}>
-                <Text style={s.qtyValueText}>{buyQty} шт</Text>
+                <Text style={s.qtyValueText}>{buyQty} {t('pcs')}</Text>
               </View>
               <TouchableOpacity style={s.qtyBtn} onPress={() => setBuyQty(q => q + 1)}>
                 <Icon name="plus" size={18} color={C.blue} />
@@ -553,10 +553,10 @@ export function ShoppingListScreen() {
             </View>
 
             <TouchableOpacity style={s.confirmBtn} onPress={confirmBought} activeOpacity={0.85}>
-              <Text style={s.confirmBtnText}>Добавить в аптечку</Text>
+              <Text style={s.confirmBtnText}>{t('shop_add_to_kit_btn')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.cancelBtn} onPress={() => setMode('none')}>
-              <Text style={s.cancelText}>Отмена</Text>
+              <Text style={s.cancelText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

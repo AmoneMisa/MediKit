@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList, Medicine } from '../types';
@@ -70,7 +71,7 @@ export function ExpiryScreen() {
         {expired.length > 0 && (
           <View style={s.alertBanner}>
             <Text style={s.alertText}>
-              ❌ {expired.length} просрочен{expired.length > 1 ? 'ы' : ''} — замените сегодня
+              {t('ex_expired_alert').replace('{count}', String(expired.length))}
             </Text>
           </View>
         )}
@@ -106,6 +107,7 @@ function ExpiryRow({
 }) {
   const expiry = useExpiryLabel(medicine.expirationDate);
   const status = getMedicineStatus(medicine);
+  const t      = useT();
 
   const daysLeft = Math.max(0, differenceInDays(parseISO(medicine.expirationDate), new Date()));
   const pct      = Math.min(100, Math.round((daysLeft / 365) * 100));
@@ -121,9 +123,11 @@ function ExpiryRow({
   return (
     <TouchableOpacity style={s.row} onPress={onPress} activeOpacity={0.85}>
       <View style={[s.iconWrap, { backgroundColor: iconBg }]}>
-        <Text style={{ fontSize: 20 }}>
-          {status === 'expired' ? '❌' : status === 'expiring_soon' ? '⚠️' : '✅'}
-        </Text>
+        <Icon
+          name={status === 'expired' ? 'close-circle' : status === 'expiring_soon' ? 'alert-circle' : 'check-circle'}
+          size={20}
+          color={status === 'expired' ? C.danger : status === 'expiring_soon' ? C.warning : C.success}
+        />
       </View>
 
       <View style={s.info}>
@@ -135,7 +139,7 @@ function ExpiryRow({
       </View>
 
       <View style={[s.qtyPill, { backgroundColor: iconBg }]}>
-        <Text style={[s.qtyText, { color: barColor }]}>{medicine.remainingQuantity} шт</Text>
+        <Text style={[s.qtyText, { color: barColor }]}>{medicine.remainingQuantity} {t('pcs')}</Text>
       </View>
     </TouchableOpacity>
   );

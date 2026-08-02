@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { NotificationsStackParamList, MedicineReminder } from '../types';
 import { useAppStore } from '../store';
+import { scheduleReminder, cancelReminder } from '../utils/notificationScheduler';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
@@ -53,6 +54,7 @@ function makeStyles(C: ColorPalette) {
     timePill: {
       flex: 1, backgroundColor: C.blueLight, borderRadius: Radius.md,
       padding: Spacing.md, alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'row', gap: 4,
     },
     timePillText: { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: C.blueDark },
     removeBtn:     { padding: Spacing.sm, alignItems: 'center', justifyContent: 'center' },
@@ -180,12 +182,17 @@ export function CreateReminderScreen() {
     const now = new Date().toISOString();
 
     if (reminderId && existing) {
-      updateR(reminderId, {
+      const changes = {
         kitId: selectedKitId, medicineId: selectedMedId,
         medicineName: selectedMed?.name ?? '', kitName: selectedKit?.name ?? '',
         pillCount: pc, times, daysOfWeek: days, isActive,
         notes: notes.trim() || undefined,
-      });
+      };
+      updateR(reminderId, changes);
+      // Reschedule: cancel old triggers, schedule with updated data
+      cancelReminder(reminderId).then(() =>
+        scheduleReminder({ ...existing, ...changes }),
+      ).catch(() => {});
     } else {
       const reminder: MedicineReminder = {
         id: `rem-${Date.now()}`, kitId: selectedKitId, medicineId: selectedMedId,
@@ -194,6 +201,7 @@ export function CreateReminderScreen() {
         isActive, notes: notes.trim() || undefined, createdAt: now,
       };
       addR(reminder);
+      scheduleReminder(reminder).catch(() => {});
     }
     navigation.goBack();
   }
@@ -212,7 +220,7 @@ export function CreateReminderScreen() {
               onPress={() => { setSelectedKitId(k.id); setSelectedMedId(''); }}
               activeOpacity={0.8}
             >
-              <Text style={{ fontSize: 18 }}>{k.icon}</Text>
+              <Icon name={k.icon} size={18} color={k.colorTag} />
               <Text style={[s.chipText, selectedKitId === k.id && s.chipTextActive]}>{k.name}</Text>
             </TouchableOpacity>
           ))}
@@ -249,7 +257,7 @@ export function CreateReminderScreen() {
                 onPress={() => DatePicker ? openTimePicker(idx) : null}
                 activeOpacity={0.8}
               >
-                <Text style={s.timePillText}>🕐 {time}</Text>
+                <Icon name="clock-outline" size={18} color={C.blueDark} /><Text style={s.timePillText}> {time}</Text>
               </TouchableOpacity>
               {times.length > 1 && (
                 <TouchableOpacity onPress={() => removeTime(idx)} style={s.removeBtn} hitSlop={8}>
@@ -298,7 +306,7 @@ export function CreateReminderScreen() {
           <View style={s.pillCountBox}>
             <Text style={s.pillCountText}>{pillCount}</Text>
             <Text style={s.pillCountUnit}>
-              {selectedMed?.form === 'syrup' ? 'мл' : selectedMed?.form === 'drops' ? 'кап' : 'шт'}
+              {selectedMed?.form === 'syrup' ? t('cr_unit_ml') : selectedMed?.form === 'drops' ? t('cr_unit_drops') : t('pcs')}
             </Text>
           </View>
           <TouchableOpacity
@@ -315,7 +323,7 @@ export function CreateReminderScreen() {
         <View style={s.card}>
           <TextInput
             style={s.notesInput}
-            placeholder="Принимать с едой…"
+            placeholder={t('cr_notes_placeholder')}
             placeholderTextColor={C.textTertiary}
             value={notes}
             onChangeText={setNotes}
@@ -331,7 +339,7 @@ export function CreateReminderScreen() {
               {isActive ? '🔔 ' : '🔕 '}{isActive ? t('reminder_active') : t('reminder_paused')}
             </Text>
             <Text style={s.activeSub}>
-              {isActive ? 'Напоминания будут приходить' : 'Напоминания приостановлены'}
+              {isActive ? t('cr_active_sub') : t('cr_paused_sub')}
             </Text>
           </View>
           <Switch

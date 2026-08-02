@@ -16,7 +16,7 @@ import { useT } from '../i18n';
 
 type Nav = NativeStackNavigationProp<JournalStackParamList, 'JournalHome'>;
 
-const WEEKDAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WEEKDAY_KEYS = ['day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fri', 'day_sat', 'day_sun'] as const;
 
 function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -112,6 +112,7 @@ export function MedicineJournalScreen() {
 
   const intakeLogs  = useAppStore(st => st.intakeLogs);
   const deleteLog   = useAppStore(st => st.deleteIntakeLog);
+  const lang        = useAppStore(st => st.settings.language);
 
   const today = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState(isoDate(today));
@@ -134,8 +135,8 @@ export function MedicineJournalScreen() {
   const weekLabel = useMemo(() => {
     const from = weekDays[0];
     const to   = weekDays[6];
-    return `${from.getDate()} ${from.toLocaleString('ru', { month: 'short' })} – ${to.getDate()} ${to.toLocaleString('ru', { month: 'short' })}`;
-  }, [weekDays]);
+    return `${from.getDate()} ${from.toLocaleString(lang, { month: 'short' })} – ${to.getDate()} ${to.toLocaleString(lang, { month: 'short' })}`;
+  }, [weekDays, lang]);
 
   // Set of dates that have logs
   const datesWithLogs = useMemo(() => new Set(intakeLogs.map(l => l.date)), [intakeLogs]);
@@ -177,7 +178,7 @@ export function MedicineJournalScreen() {
               onPress={() => setSelectedDate(iso)}
               activeOpacity={0.8}
             >
-              <Text style={[s.dayLabel, active && s.dayLabelActive]}>{WEEKDAYS_SHORT[i]}</Text>
+              <Text style={[s.dayLabel, active && s.dayLabelActive]}>{t(WEEKDAY_KEYS[i])}</Text>
               <Text style={[s.dayNum, active && s.dayNumActive]}>{d.getDate()}</Text>
               {hasLogs ? <View style={[s.dayDot, active && s.dayDotActive]} /> : <View style={{ height: 8 }} />}
             </TouchableOpacity>
@@ -239,9 +240,9 @@ export function MedicineJournalScreen() {
               <TouchableOpacity
                 style={s.actionBtn}
                 onPress={() =>
-                  Alert.alert('Удалить запись?', undefined, [
-                    { text: 'Отмена', style: 'cancel' },
-                    { text: 'Удалить', style: 'destructive', onPress: () => deleteLog(item.id) },
+                  Alert.alert(t('mj_delete_entry'), undefined, [
+                    { text: t('cancel'), style: 'cancel' },
+                    { text: t('delete'), style: 'destructive', onPress: () => deleteLog(item.id) },
                   ])
                 }
               >

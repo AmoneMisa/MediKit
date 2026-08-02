@@ -1,3 +1,5 @@
+export { HueSlider } from './HueSlider';
+
 import React from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image,
@@ -5,17 +7,19 @@ import {
 import { Typography, Spacing, Radius, Shadow } from '../theme';
 import type { MedicineStatus, MedicineForm } from '../types';
 import { useColors } from '../context/ThemeContext';
+import { useT } from '../i18n';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
 
 export const StatusBadge: React.FC<{ status: MedicineStatus; style?: ViewStyle }> = ({ status, style }) => {
   const C = useColors();
+  const t = useT();
   const cfg = {
-    ok:            { label: 'В норме',   bg: C.successLight, text: C.successDark },
-    expiring_soon: { label: 'Скоро!',    bg: C.warningLight, text: C.warningDark },
-    expired:       { label: 'Просрочен', bg: C.dangerLight,  text: C.dangerDark  },
-    low_stock:     { label: 'Мало',      bg: C.accentLight,  text: C.accent      },
+    ok:            { label: t('sc_status_ok'),       bg: C.successLight, text: C.successDark },
+    expiring_soon: { label: t('sc_status_expiring'), bg: C.warningLight, text: C.warningDark },
+    expired:       { label: t('sc_status_expired'),  bg: C.dangerLight,  text: C.dangerDark  },
+    low_stock:     { label: t('sc_status_low_stock'), bg: C.accentLight,  text: C.accent      },
   }[status] ?? { label: status, bg: C.bgCard, text: C.textSecondary };
 
   return (
@@ -27,10 +31,10 @@ export const StatusBadge: React.FC<{ status: MedicineStatus; style?: ViewStyle }
 
 // ─── MedicineIcon ─────────────────────────────────────────────────────────────
 
-const FORM_EMOJI: Record<MedicineForm, string> = {
-  tablets: '💊', capsules: '💊', syrup: '🍯', spray: '💨',
-  drops: '💧', ointment: '🧴', injection: '💉', powder: '🧂',
-  patch: '🩹', other: '🩺',
+const FORM_ICON: Record<MedicineForm, string> = {
+  tablets: 'pill', capsules: 'pill', syrup: 'bottle-tonic', spray: 'spray',
+  drops: 'water', ointment: 'lotion-plus', injection: 'needle', powder: 'dots-horizontal-circle',
+  patch: 'bandage', other: 'stethoscope',
 };
 
 const FORM_BG: Record<MedicineForm, string> = {
@@ -45,7 +49,7 @@ export const MedicineIcon: React.FC<{ form: MedicineForm; size?: number }> = ({ 
     borderRadius: Math.round(size * 0.27),
     backgroundColor: FORM_BG[form] ?? '#EAF1FF',
   }]}>
-    <Text style={{ fontSize: Math.round(size * 0.45) }}>{FORM_EMOJI[form] ?? '💊'}</Text>
+    <Icon name={FORM_ICON[form] ?? 'pill'} size={Math.round(size * 0.45)} color="#555" />
   </View>
 );
 
@@ -69,7 +73,7 @@ export const KitThumb: React.FC<{
       width: size, height: size, borderRadius: r,
       backgroundColor: colorTag + '33', borderColor: colorTag + '66',
     }]}>
-      <Text style={{ fontSize: Math.round(size * 0.45) }}>{icon}</Text>
+      <Icon name={icon} size={Math.round(size * 0.52)} color={colorTag} />
     </View>
   );
 };
@@ -77,11 +81,10 @@ export const KitThumb: React.FC<{
 // ─── IconButton ───────────────────────────────────────────────────────────────
 
 export const IconButton: React.FC<{
-  icon?: string; emoji?: string;
+  icon: string;
   onPress?: () => void; style?: ViewStyle; size?: number;
-}> = ({ icon, emoji, onPress, style, size = 36 }) => {
+}> = ({ icon, onPress, style, size = 36 }) => {
   const C = useColors();
-  const iconSize = Math.round(size * 0.52);
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -91,10 +94,7 @@ export const IconButton: React.FC<{
       }, style]}
       activeOpacity={0.7}
     >
-      {icon
-        ? <Icon name={icon} size={iconSize} color={C.textPrimary} />
-        : <Text style={{ fontSize: Math.round(size * 0.47) }}>{emoji}</Text>
-      }
+      <Icon name={icon} size={Math.round(size * 0.52)} color={C.textPrimary} />
     </TouchableOpacity>
   );
 };
@@ -123,7 +123,7 @@ function KittenFor({ variant, size }: { variant: KittenVariant; size: number }) 
 }
 
 export const EmptyState: React.FC<{
-  emoji?: string;
+  iconName?: string;
   kitten?: KittenVariant;
   kittenSize?: number;
   title: string;
@@ -131,13 +131,13 @@ export const EmptyState: React.FC<{
   actionLabel?: string;
   onAction?: () => void;
   style?: ViewStyle;
-}> = ({ emoji, kitten, kittenSize = 130, title, subtitle, actionLabel, onAction, style }) => {
+}> = ({ iconName, kitten, kittenSize = 130, title, subtitle, actionLabel, onAction, style }) => {
   const C = useColors();
   return (
     <View style={[ss.emptyState, style]}>
       {kitten
         ? <KittenFor variant={kitten} size={kittenSize} />
-        : <Text style={ss.emptyEmoji}>{emoji ?? '🔍'}</Text>
+        : <Icon name={iconName ?? 'magnify'} size={52} color={C.textTertiary} style={{ marginBottom: Spacing.md }} />
       }
       <Text style={[ss.emptyTitle, { color: C.textPrimary }]}>{title}</Text>
       {subtitle ? <Text style={[ss.emptySubtitle, { color: C.textSecondary }]}>{subtitle}</Text> : null}
@@ -174,14 +174,14 @@ export const Card: React.FC<{ children: React.ReactNode; style?: ViewStyle; onPr
 // ─── WarningBanner ────────────────────────────────────────────────────────────
 
 export const WarningBanner: React.FC<{
-  emoji?: string; title: string; body?: string; style?: ViewStyle;
-}> = ({ emoji = '⚠️', title, body, style }) => {
+  icon?: string; title: string; body?: string; style?: ViewStyle;
+}> = ({ icon = 'alert', title, body, style }) => {
   const C = useColors();
   return (
     <View style={[ss.warningBanner, {
       backgroundColor: C.dangerLight, borderColor: C.dangerBorder,
     }, style]}>
-      <Text style={ss.warnEmoji}>{emoji}</Text>
+      <Icon name={icon} size={22} color={C.dangerDark} />
       <View style={{ flex: 1 }}>
         <Text style={[ss.warnTitle, { color: C.dangerDark }]}>{title}</Text>
         {body ? <Text style={[ss.warnBody, { color: C.dangerDark }]}>{body}</Text> : null}
@@ -229,7 +229,6 @@ const ss = StyleSheet.create({
   iconButton: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', ...Shadow.sm },
 
   emptyState:    { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl },
-  emptyEmoji:    { fontSize: 52, marginBottom: Spacing.md },
   emptyTitle:    {
     fontSize: Typography.size.lg, fontWeight: Typography.weight.bold,
     textAlign: 'center', marginBottom: Spacing.sm, marginTop: Spacing.md,
@@ -245,7 +244,7 @@ const ss = StyleSheet.create({
     borderWidth: 1.5, borderRadius: Radius.md,
     padding: Spacing.md, marginBottom: Spacing.md, gap: Spacing.sm,
   },
-  warnEmoji: { fontSize: 22 },
+  warnIcon: { },
   warnTitle: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold },
   warnBody:  { fontSize: Typography.size.body, marginTop: 2, lineHeight: Typography.size.body * 1.5 },
 

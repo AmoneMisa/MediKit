@@ -15,6 +15,7 @@ import { Typography, Spacing } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useUnreadCount } from '../hooks';
 import { ThemeProvider, useIsDark, useColors } from '../context/ThemeContext';
+import { useT } from '../i18n';
 
 // ── Screen imports ─────────────────────────────────────────────────────────────
 import { KitListScreen }          from '../screens/KitListScreen';
@@ -34,6 +35,8 @@ import { SyncMembersScreen }      from '../screens/SyncMembersScreen';
 import { ActivityHistoryScreen }  from '../screens/ActivityHistoryScreen';
 import { CreateEditKitScreen }    from '../screens/CreateEditKitScreen';
 import { PersonsScreen }          from '../screens/PersonsScreen';
+import { DoctorsListScreen, DoctorFormScreen } from '../screens/DoctorsScreen';
+import { AppointmentsScreen, AnalysesArchiveScreen } from '../screens/AppointmentsScreen';
 import { ShoppingListScreen }     from '../screens/ShoppingListScreen';
 import { MedicineJournalScreen }  from '../screens/MedicineJournalScreen';
 import { AddIntakeLogScreen }     from '../screens/AddIntakeLogScreen';
@@ -97,23 +100,24 @@ const t = StyleSheet.create({
 
 function KitsStackNavigator() {
   const C = useColors();
+  const t = useT();
   const so = makeScreenOpts(C);
   return (
     <KitsStack.Navigator screenOptions={so}>
-      <KitsStack.Screen name="KitList"             component={KitListScreen}         options={{ title: 'Мои аптечки' }} />
-      <KitsStack.Screen name="AllMedicines"        component={AllMedicinesScreen}    options={{ title: 'Все препараты' }} />
+      <KitsStack.Screen name="KitList"             component={KitListScreen}         options={{ title: t('my_kits') }} />
+      <KitsStack.Screen name="AllMedicines"        component={AllMedicinesScreen}    options={{ title: t('all_medicines') }} />
       <KitsStack.Screen name="KitDetail"           component={KitDetailScreen}       options={{ title: '' }} />
       <KitsStack.Screen name="MedicineDetail"      component={MedicineDetailScreen}  options={{ title: '' }} />
-      <KitsStack.Screen name="AddMedicine"         component={AddMedicineScreen}     options={{ title: 'Добавить препарат' }} />
-      <KitsStack.Screen name="ManualEntry"         component={ManualEntryScreen}     options={{ title: 'Ввести вручную' }} />
-      <KitsStack.Screen name="ScanMedicine"        component={ScanMedicineScreen}    options={{ title: 'Сканировать' }} />
-      <KitsStack.Screen name="SearchMedicine"      component={SearchMedicineScreen}  options={{ title: 'Найти в базе' }} />
-      <KitsStack.Screen name="ShareKit"            component={ShareKitScreen}        options={{ title: 'Поделиться' }} />
-      <KitsStack.Screen name="MedicineInteraction" component={InteractionScreen}     options={{ title: 'Совместимость' }} />
-      <KitsStack.Screen name="SyncMembers"         component={SyncMembersScreen}     options={{ title: 'Участники' }} />
-      <KitsStack.Screen name="ActivityHistory"     component={ActivityHistoryScreen} options={{ title: 'История' }} />
-      <KitsStack.Screen name="CreateEditKit"       component={CreateEditKitScreen}   options={{ title: 'Аптечка' }} />
-      <KitsStack.Screen name="ShareMedicine"       component={ShareMedicineScreen}   options={{ title: 'Поделиться' }} />
+      <KitsStack.Screen name="AddMedicine"         component={AddMedicineScreen}     options={{ title: t('add_medicine') }} />
+      <KitsStack.Screen name="ManualEntry"         component={ManualEntryScreen}     options={{ title: t('enter_manually') }} />
+      <KitsStack.Screen name="ScanMedicine"        component={ScanMedicineScreen}    options={{ title: t('title_scan') }} />
+      <KitsStack.Screen name="SearchMedicine"      component={SearchMedicineScreen}  options={{ title: t('find_in_db') }} />
+      <KitsStack.Screen name="ShareKit"            component={ShareKitScreen}        options={{ title: t('title_share') }} />
+      <KitsStack.Screen name="MedicineInteraction" component={InteractionScreen}     options={{ title: t('title_interaction') }} />
+      <KitsStack.Screen name="SyncMembers"         component={SyncMembersScreen}     options={{ title: t('members') }} />
+      <KitsStack.Screen name="ActivityHistory"     component={ActivityHistoryScreen} options={{ title: t('title_history') }} />
+      <KitsStack.Screen name="CreateEditKit"       component={CreateEditKitScreen}   options={{ title: t('title_kit') }} />
+      <KitsStack.Screen name="ShareMedicine"       component={ShareMedicineScreen}   options={{ title: t('title_share') }} />
     </KitsStack.Navigator>
   );
 }
@@ -138,6 +142,7 @@ function ShoppingStackNavigator() {
 
 function JournalStackNavigator() {
   const C = useColors();
+  const t = useT();
   const so = makeScreenOpts(C);
   return (
     <JournalStack.Navigator screenOptions={so}>
@@ -149,7 +154,7 @@ function JournalStackNavigator() {
       <JournalStack.Screen
         name="AddIntakeLog"
         component={AddIntakeLogScreen}
-        options={{ title: 'Запись о приёме' }}
+        options={{ title: t('title_intake_log') }}
       />
     </JournalStack.Navigator>
   );
@@ -159,6 +164,7 @@ function JournalStackNavigator() {
 
 function NotificationsStackNavigator() {
   const C = useColors();
+  const t = useT();
   const so = makeScreenOpts(C);
   return (
     <NotifStack.Navigator screenOptions={so}>
@@ -170,7 +176,7 @@ function NotificationsStackNavigator() {
       <NotifStack.Screen
         name="CreateReminder"
         component={CreateReminderScreen}
-        options={{ title: 'Напоминание' }}
+        options={{ title: t('title_reminder') }}
       />
     </NotifStack.Navigator>
   );
@@ -180,15 +186,20 @@ function NotificationsStackNavigator() {
 
 function ProfileStackNavigator() {
   const C = useColors();
+  const t = useT();
   const so = makeScreenOpts(C);
   return (
     <ProfileStack.Navigator screenOptions={so}>
-      <ProfileStack.Screen name="ProfileHome"    component={ProfileScreen}        options={{ title: 'Профиль' }} />
-      <ProfileStack.Screen name="Settings"       component={SettingsScreen}       options={{ title: 'Настройки' }} />
-      <ProfileStack.Screen name="Support"        component={HelpScreen}           options={{ title: 'Как пользоваться' }} />
-      <ProfileStack.Screen name="Persons"        component={PersonsScreen}        options={{ title: 'Контакты' }} />
-      <ProfileStack.Screen name="Expiry"         component={ExpiryScreen}         options={{ title: 'Сроки годности' }} />
-      <ProfileStack.Screen name="MedicineDetail" component={MedicineDetailScreen} options={{ title: '' }} />
+      <ProfileStack.Screen name="ProfileHome"    component={ProfileScreen}        options={{ title: t('profile') }} />
+      <ProfileStack.Screen name="Settings"       component={SettingsScreen}       options={{ title: t('settings') }} />
+      <ProfileStack.Screen name="Support"        component={HelpScreen}           options={{ title: t('title_how_to_use') }} />
+      <ProfileStack.Screen name="Persons"        component={PersonsScreen}        options={{ title: t('contacts') }} />
+      <ProfileStack.Screen name="Doctors"          component={DoctorsListScreen}      options={{ headerShown: false }} />
+      <ProfileStack.Screen name="DoctorForm"       component={DoctorFormScreen}       options={{ title: t('doc_form_title') }} />
+      <ProfileStack.Screen name="Appointments"     component={AppointmentsScreen}     options={{ headerShown: false }} />
+      <ProfileStack.Screen name="AnalysesArchive"  component={AnalysesArchiveScreen}  options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Expiry"           component={ExpiryScreen}           options={{ title: t('expiry_title') }} />
+      <ProfileStack.Screen name="MedicineDetail"   component={MedicineDetailScreen}   options={{ title: '' }} />
     </ProfileStack.Navigator>
   );
 }
@@ -198,6 +209,7 @@ function ProfileStackNavigator() {
 function MainTabs() {
   const unread = useUnreadCount();
   const C      = useColors();
+  const t      = useT();
   const insets = useSafeAreaInsets();
 
   // Tab bar height = 52px content + bottom safe area
@@ -224,7 +236,7 @@ function MainTabs() {
         name="KitsTab"
         component={KitsStackNavigator}
         options={{
-          tabBarLabel: 'Аптечки',
+          tabBarLabel: t('kits'),
           tabBarIcon: ({ focused }) => <TabIcon name="medical-bag" focused={focused} />,
         }}
       />
@@ -232,7 +244,7 @@ function MainTabs() {
         name="ShoppingTab"
         component={ShoppingStackNavigator}
         options={{
-          tabBarLabel: 'Купить',
+          tabBarLabel: t('shopping_title'),
           tabBarIcon: ({ focused }) => <TabIcon name={focused ? 'cart' : 'cart-outline'} focused={focused} />,
         }}
       />
@@ -240,7 +252,7 @@ function MainTabs() {
         name="JournalTab"
         component={JournalStackNavigator}
         options={{
-          tabBarLabel: 'Журнал',
+          tabBarLabel: t('journal'),
           tabBarIcon: ({ focused }) => <TabIcon name={focused ? 'calendar-check' : 'calendar-check-outline'} focused={focused} />,
         }}
       />
@@ -248,7 +260,7 @@ function MainTabs() {
         name="NotificationsTab"
         component={NotificationsStackNavigator}
         options={{
-          tabBarLabel: 'Уведомл.',
+          tabBarLabel: t('notifications'),
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'bell' : 'bell-outline'} focused={focused} badge={unread} />
           ),
@@ -258,7 +270,7 @@ function MainTabs() {
         name="ProfileTab"
         component={ProfileStackNavigator}
         options={{
-          tabBarLabel: 'Профиль',
+          tabBarLabel: t('profile'),
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'account-circle' : 'account-circle-outline'} focused={focused} />
           ),

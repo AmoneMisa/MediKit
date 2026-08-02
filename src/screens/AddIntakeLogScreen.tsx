@@ -11,6 +11,7 @@ import { useAppStore } from '../store';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
+import { useT } from '../i18n';
 
 let DatePicker: any = null;
 try { DatePicker = require('react-native-date-picker').default; } catch {}
@@ -24,11 +25,13 @@ function isoTime(d: Date) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
-const COMMON_SYMPTOMS = [
-  'Головная боль', 'Температура', 'Кашель', 'Насморк', 'Боль в горле',
-  'Тошнота', 'Усталость', 'Боль в животе', 'Головокружение', 'Бессонница',
-  'Боль в мышцах', 'Аллергия', 'Давление', 'Боль в спине', 'Изжога',
-];
+const SYMPTOM_KEYS = [
+  'il_sym_headache', 'il_sym_fever', 'il_sym_cough', 'il_sym_runny_nose', 'il_sym_sore_throat',
+  'il_sym_nausea', 'il_sym_fatigue', 'il_sym_stomach_pain', 'il_sym_dizziness', 'il_sym_insomnia',
+  'il_sym_muscle_pain', 'il_sym_allergy', 'il_sym_pressure', 'il_sym_back_pain', 'il_sym_heartburn',
+] as const;
+
+const UNIT_KEY: Record<string, string> = { 'шт': 'pcs', 'мл': 'cr_unit_ml', 'кап': 'cr_unit_drops' };
 
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
@@ -142,12 +145,14 @@ export function AddIntakeLogScreen() {
 
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+  const t = useT();
 
   const intakeLogs  = useAppStore(st => st.intakeLogs);
   const addLog      = useAppStore(st => st.addIntakeLog);
   const updateLog   = useAppStore(st => st.updateIntakeLog);
   const medicines   = useAppStore(st => st.medicines);
   const kits        = useAppStore(st => st.kits);
+  const lang        = useAppStore(st => st.settings.language);
 
   const existingLog = logId ? intakeLogs.find(l => l.id === logId) : undefined;
 
@@ -204,7 +209,7 @@ export function AddIntakeLogScreen() {
 
   function handleSave() {
     const validEntries = entries.filter(e => e.medicineName.trim());
-    if (validEntries.length === 0) { Alert.alert('Добавьте хотя бы один препарат'); return; }
+    if (validEntries.length === 0) { Alert.alert(t('il_need_medicine')); return; }
     const date = isoDate(dateObj);
     const time = isoTime(timeObj);
     if (existingLog && logId) {
@@ -221,11 +226,11 @@ export function AddIntakeLogScreen() {
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
           {/* Date & Time */}
-          <Text style={s.sec}>Дата и время</Text>
+          <Text style={s.sec}>{t('il_date_time')}</Text>
           <View style={s.card}>
             <View style={s.dateTimeRow}>
               <TouchableOpacity style={s.datePicker} onPress={() => setDateOpen(true)} activeOpacity={0.8}>
-                <Text style={s.datePickerText}>{dateObj.toLocaleDateString('ru')}</Text>
+                <Text style={s.datePickerText}>{dateObj.toLocaleDateString(lang)}</Text>
                 <Icon name="calendar" size={18} color={C.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity style={s.datePicker} onPress={() => setTimeOpen(true)} activeOpacity={0.8}>
@@ -236,7 +241,7 @@ export function AddIntakeLogScreen() {
           </View>
 
           {/* Medicines from kit */}
-          <Text style={s.sec}>Выбрать из аптечки</Text>
+          <Text style={s.sec}>{t('il_pick_from_kit')}</Text>
           <View style={s.card}>
             {kits.length > 0 ? (
               <>
@@ -248,13 +253,13 @@ export function AddIntakeLogScreen() {
                       onPress={() => setKitFilter(k.id)}
                       activeOpacity={0.8}
                     >
-                      <Text style={{ fontSize: 14 }}>{k.icon}</Text>
+                      <Icon name={k.icon} size={14} color={k.colorTag} />
                       <Text style={[s.kitChipText, kitFilter === k.id && s.kitChipTextA]}>{k.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 {kitMedicines.length === 0 ? (
-                  <Text style={{ color: C.textTertiary, fontSize: Typography.size.body }}>Нет препаратов</Text>
+                  <Text style={{ color: C.textTertiary, fontSize: Typography.size.body }}>{t('il_no_medicines')}</Text>
                 ) : kitMedicines.map(med => (
                   <TouchableOpacity key={med.id} style={s.kitMedRow} onPress={() => addFromKit(med)} activeOpacity={0.8}>
                     <Text style={s.kitMedName}>{med.name}{med.dosage ? ` ${med.dosage}` : ''}</Text>
@@ -263,18 +268,18 @@ export function AddIntakeLogScreen() {
                 ))}
               </>
             ) : (
-              <Text style={{ color: C.textTertiary, fontSize: Typography.size.body }}>Нет аптечек</Text>
+              <Text style={{ color: C.textTertiary, fontSize: Typography.size.body }}>{t('il_no_kits')}</Text>
             )}
           </View>
 
           {/* Medicine entries list */}
-          <Text style={s.sec}>Принятые препараты</Text>
+          <Text style={s.sec}>{t('il_taken_medicines')}</Text>
           <View style={s.card}>
             {entries.map((entry, i) => (
               <View key={i} style={s.entryRow}>
                 <TextInput
                   style={s.entryInput}
-                  placeholder="Название препарата"
+                  placeholder={t('il_medicine_name_ph')}
                   placeholderTextColor={C.textTertiary}
                   value={entry.medicineName}
                   onChangeText={v => updateEntry(i, 'medicineName', v)}
@@ -292,7 +297,7 @@ export function AddIntakeLogScreen() {
                   style={s.unitPill}
                   onPress={() => updateEntry(i, 'unit', entry.unit === 'шт' ? 'мл' : entry.unit === 'мл' ? 'кап' : 'шт')}
                 >
-                  <Text style={s.unitText}>{entry.unit}</Text>
+                  <Text style={s.unitText}>{t((UNIT_KEY[entry.unit] ?? 'pcs') as any)}</Text>
                 </TouchableOpacity>
                 {entries.length > 1 && (
                   <TouchableOpacity onPress={() => removeEntry(i)}>
@@ -307,33 +312,36 @@ export function AddIntakeLogScreen() {
               activeOpacity={0.8}
             >
               <Icon name="plus" size={14} color={C.blue} />
-              <Text style={s.addEntryBtnText}>Добавить препарат</Text>
+              <Text style={s.addEntryBtnText}>{t('il_add_medicine')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Symptoms */}
-          <Text style={s.sec}>Симптомы</Text>
+          <Text style={s.sec}>{t('il_symptoms')}</Text>
           <View style={s.card}>
             <View style={s.chipRow}>
-              {COMMON_SYMPTOMS.map(sym => (
-                <TouchableOpacity
-                  key={sym}
-                  style={[s.chip, symptoms.includes(sym) && s.chipActive]}
-                  onPress={() => toggleSymptom(sym)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.chipText, symptoms.includes(sym) && s.chipTextA]}>{sym}</Text>
-                </TouchableOpacity>
-              ))}
+              {SYMPTOM_KEYS.map(symKey => {
+                const sym = t(symKey);
+                return (
+                  <TouchableOpacity
+                    key={symKey}
+                    style={[s.chip, symptoms.includes(sym) && s.chipActive]}
+                    onPress={() => toggleSymptom(sym)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.chipText, symptoms.includes(sym) && s.chipTextA]}>{sym}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
           {/* Notes */}
-          <Text style={s.sec}>Заметки</Text>
+          <Text style={s.sec}>{t('il_notes')}</Text>
           <View style={s.card}>
             <TextInput
               style={s.notesInput}
-              placeholder="Как себя чувствуете, особые наблюдения…"
+              placeholder={t('il_notes_ph')}
               placeholderTextColor={C.textTertiary}
               value={notes}
               onChangeText={setNotes}
@@ -343,7 +351,7 @@ export function AddIntakeLogScreen() {
           </View>
 
           <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={s.saveBtnText}>{existingLog ? 'Сохранить изменения' : 'Сохранить запись'}</Text>
+            <Text style={s.saveBtnText}>{existingLog ? t('cek_save_changes') : t('il_save_record')}</Text>
           </TouchableOpacity>
 
         </ScrollView>
@@ -352,11 +360,11 @@ export function AddIntakeLogScreen() {
       {DatePicker && (
         <>
           <DatePicker modal open={dateOpen} date={dateObj} mode="date"
-            title="Выберите дату" confirmText="Готово" cancelText="Отмена"
+            title={t('il_pick_date')} confirmText={t('il_done')} cancelText={t('cancel')}
             onConfirm={d => { setDateOpen(false); setDateObj(d); }}
             onCancel={() => setDateOpen(false)} />
           <DatePicker modal open={timeOpen} date={timeObj} mode="time"
-            title="Выберите время" confirmText="Готово" cancelText="Отмена"
+            title={t('il_pick_time')} confirmText={t('il_done')} cancelText={t('cancel')}
             onConfirm={d => { setTimeOpen(false); setTimeObj(d); }}
             onCancel={() => setTimeOpen(false)} />
         </>

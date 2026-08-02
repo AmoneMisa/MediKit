@@ -1,10 +1,12 @@
-import { ensureAuth, type ApiUser } from './client';
+import { ensureAuth, logout, type ApiUser } from './client';
 import {
   listKits, listKitMedicines, listNotifications, listContacts,
-  createKit, upsertKitMedicine, type ApiContact,
+  createKit, upsertKitMedicine, listDoctors, upsertDoctor as apiUpsertDoctor,
+  listAppointments, upsertAppointment as apiUpsertAppointment,
+  type ApiContact,
 } from './social';
 import { realtime, type RealtimeEvent } from './realtime';
-import { setSyncEnabled } from './outbox';
+import { setSyncEnabled, drainQueue } from './outbox';
 import { useAppStore } from '../store';
 import type { MedicineKit, Medicine, AppNotification, Person } from '../types';
 
@@ -30,9 +32,15 @@ export function contactToPerson(c: ApiContact): Person {
 }
 
 /** Push kits (and their medicines) that this device owns but the server hasn't seen. */
-async function pushLocal(kits: MedicineKit[], medicines: Medicine[], mineIds: Set<string>): Promise<void> {
+async function pushLocal(
+  kits: MedicineKit[],
+  medicines: Medicine[],
+  mineIds: Set<string>,
+  since?: string,
+): Promise<void> {
   for (const kit of kits) {
     if (!mineIds.has(kit.ownerId)) continue; // never claim someone else's shared kit
+    if (since && kit.updatedAt <= since) continue; // already synced
     try {
       await createKit({
         id: kit.id, name: kit.name, description: kit.description, icon: kit.icon,
@@ -41,6 +49,7 @@ async function pushLocal(kits: MedicineKit[], medicines: Medicine[], mineIds: Se
       });
     } catch { continue; } // kit push failed → skip its medicines too
     for (const med of medicines.filter(m => m.kitId === kit.id)) {
+      if (since && med.updatedAt <= since) continue;
       try { await upsertKitMedicine(kit.id, med); } catch { /* best-effort */ }
     }
   }
@@ -53,11 +62,15 @@ async function pullAll(): Promise<void> {
   for (const k of kits) {
     try { medicines.push(...await listKitMedicines(k.id)); } catch { /* skip kit */ }
   }
-  const [notifications, persons] = await Promise.all([
+  const [notifications, persons, doctors, appointments] = await Promise.all([
     listNotifications().catch(() => undefined),
     listContacts().then(cs => cs.map(contactToPerson)).catch(() => undefined),
+    listDoctors().catch(() => undefined),
+    listAppointments().catch(() => undefined),
   ]);
-  useAppStore.getState().hydrate({ kits, medicines, notifications, persons });
+  useAppStore.getState().hydrate({ kits, medicines, notifications, persons, doctors, appointments });
+  // Record the sync timestamp so push-local can skip unchanged records next time
+  useAppStore.getState().updateSettings({ lastSyncAt: new Date().toISOString() });
 }
 
 function applyEvent(ev: RealtimeEvent): void {
@@ -78,6 +91,18 @@ function applyEvent(ev: RealtimeEvent): void {
       break;
     case 'notification':
       s.addNotificationLocal(ev.notification as AppNotification);
+      break;
+    case 'appointment_upserted':
+      s.mergeAppointment(ev.appointment as any);
+      break;
+    case 'appointment_deleted':
+      s.removeAppointmentLocal(ev.appointmentId);
+      break;
+    case 'doctor_upserted':
+      s.mergeDoctor(ev.doctor as any);
+      break;
+    case 'doctor_deleted':
+      s.removeDoctorLocal(ev.doctorId);
       break;
     default:
       break; // connected / pong / activity handled elsewhere
@@ -115,9 +140,26 @@ export async function startSync(): Promise<void> {
 
   setSyncEnabled(true);
 
+  // Drain any ops that failed while offline (persisted in MMKV by the outbox).
+  await drainQueue().catch(() => {});
+
+  const since = store.settings.lastSyncAt;
+
   // Kits owned either under the old local id (first migration) or the new server id.
   const mineIds = new Set([localUserId, apiUser.id]);
-  await pushLocal(store.kits, store.medicines, mineIds);
+  await pushLocal(store.kits, store.medicines, mineIds, since);
+
+  // Push any locally-created doctors that the server hasn't seen yet.
+  for (const doc of store.doctors) {
+    if (since && doc.updatedAt <= since) continue;
+    try { await apiUpsertDoctor(doc); } catch { /* best-effort */ }
+  }
+
+  // Push any locally-created appointments that the server hasn't seen yet.
+  for (const appt of store.appointments) {
+    if (since && appt.updatedAt <= since) continue;
+    try { await apiUpsertAppointment(appt); } catch { /* best-effort */ }
+  }
 
   try {
     await pullAll();
@@ -133,4 +175,5 @@ export function stopSync(): void {
   unsubscribe = null;
   realtime.disconnect();
   started = false;
+  logout().catch(() => {}); // revoke token server-side; fire-and-forget
 }

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useT } from '../i18n';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,7 +8,7 @@ import type { KitsStackParamList, MedicineKit } from '../types';
 import { useAppStore, getKitStats } from '../store';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
-import { useColors } from '../context/ThemeContext';
+import { useColors, useGradient } from '../context/ThemeContext';
 import { KitThumb, EmptyState, IconButton } from '../components';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -27,6 +28,13 @@ function makeStyles(C: ColorPalette) {
     kitCard: {
       backgroundColor: C.bgCard, borderRadius: Radius.xl, padding: Spacing.lg,
       marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      overflow: 'hidden',
+      ...Shadow.card,
+    },
+    kitCardGrad: {
+      backgroundColor: 'transparent', borderRadius: Radius.xl, padding: Spacing.lg,
+      marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      overflow: 'hidden',
       ...Shadow.card,
     },
     kitInfo: { flex: 1 },
@@ -36,7 +44,6 @@ function makeStyles(C: ColorPalette) {
       color: C.textPrimary, flexShrink: 1,
     },
     sharedTag: { fontSize: Typography.size.xs, color: C.textSecondary },
-    pinIcon:   { fontSize: 11 },
     kitCount:  { fontSize: Typography.size.body, color: C.textSecondary, marginBottom: Spacing.sm },
     badges:    { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
     badge:     { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.pill },
@@ -62,6 +69,7 @@ export function KitListScreen() {
   const C          = useColors();
   const s          = useMemo(() => makeStyles(C), [C]);
   const t          = useT();
+  const gradient   = useGradient();
 
   const rawKits   = useAppStore(state => state.kits);
   const medicines = useAppStore(state => state.medicines);
@@ -135,39 +143,47 @@ export function KitListScreen() {
           const isPinned = (item.priority ?? 0) > 0;
           return (
             <TouchableOpacity
-              style={s.kitCard}
+              style={gradient.enabled ? s.kitCardGrad : s.kitCard}
               onPress={() => navigation.navigate('KitDetail', { kitId: item.id })}
               activeOpacity={0.85}
             >
+              {gradient.enabled && (
+                <LinearGradient
+                  colors={gradient.colors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               <KitThumb icon={item.icon} colorTag={item.colorTag} photoUri={item.photoUri} />
 
               <View style={s.kitInfo}>
                 <View style={s.topRow}>
-                  {isPinned && <Text style={s.pinIcon}>📌</Text>}
+                  {isPinned && <Icon name="pin" size={11} color={C.textSecondary} />}
                   <Text style={s.kitName} numberOfLines={1}>{item.name}</Text>
-                  {isShared && <Text style={s.sharedTag}>👥 Общая</Text>}
+                  {isShared && <Text style={s.sharedTag}>{t('kl_shared')}</Text>}
                 </View>
                 <Text style={s.kitCount}>
-                  {stats.total} {stats.total === 1 ? 'препарат' : 'препарата'}
+                  {t('kl_med_count').replace('{count}', String(stats.total))}
                 </Text>
                 <View style={s.badges}>
                   {stats.expired > 0 && (
                     <View style={[s.badge, s.badgeDanger]}>
                       <Text style={[s.badgeText, { color: C.dangerDark }]}>
-                        🔴 Просрочен: {stats.expired}
+                        {t('kl_expired_badge').replace('{count}', String(stats.expired))}
                       </Text>
                     </View>
                   )}
                   {stats.expiringSoon > 0 && (
                     <View style={[s.badge, s.badgeWarn]}>
                       <Text style={[s.badgeText, { color: C.warningDark }]}>
-                        🟡 Скоро: {stats.expiringSoon}
+                        {t('kl_soon_badge').replace('{count}', String(stats.expiringSoon))}
                       </Text>
                     </View>
                   )}
                   {stats.expired === 0 && stats.expiringSoon === 0 && (
                     <View style={[s.badge, s.badgeOk]}>
-                      <Text style={[s.badgeText, { color: C.successDark }]}>✅ Всё в порядке</Text>
+                      <Text style={[s.badgeText, { color: C.successDark }]}>{t('kl_all_ok')}</Text>
                     </View>
                   )}
                 </View>

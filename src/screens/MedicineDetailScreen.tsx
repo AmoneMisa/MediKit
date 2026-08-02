@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, SafeAreaView, Image,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, SafeAreaView, Image, Modal, FlatList,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { KitsStackParamList, Medicine } from '../types';
+import type { KitsStackParamList, Medicine, MedicineKit } from '../types';
 import { useAppStore, getMedicineStatus } from '../store';
+import { cancelMedicineExpiry } from '../utils/notificationScheduler';
 import { useExpiryLabel } from '../hooks';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
@@ -16,12 +17,6 @@ import { useT } from '../i18n';
 
 type Nav   = NativeStackNavigationProp<KitsStackParamList, 'MedicineDetail'>;
 type Route = RouteProp<KitsStackParamList, 'MedicineDetail'>;
-
-const FORM_LABELS: Record<string, string> = {
-  tablets: 'Таблетки', capsules: 'Капсулы', syrup: 'Сироп',
-  spray: 'Спрей', drops: 'Капли', ointment: 'Мазь',
-  injection: 'Инъекция', powder: 'Порошок', patch: 'Пластырь', other: 'Другое',
-};
 
 function checkIncompatible(a: Medicine, b: Medicine): boolean {
   const bNames = [b.name, b.activeIngredient ?? ''].filter(Boolean).map(s => s.toLowerCase());
@@ -123,6 +118,25 @@ function makeStyles(C: ColorPalette) {
     shareBtnText: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold, color: C.blue },
     interactionLink:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, paddingVertical: Spacing.md },
     interactionLinkText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.blue },
+
+    wideBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg,
+      marginBottom: Spacing.sm,
+    },
+    wideBtnText: { fontSize: Typography.size.base, fontWeight: Typography.weight.bold },
+
+    // Kit picker modal
+    modalBack:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+    modalSheet:   { backgroundColor: C.bgCard, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, padding: Spacing.xl, paddingBottom: 40 },
+    modalTitle:   { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: C.textPrimary, marginBottom: Spacing.md },
+    modalSub:     { fontSize: Typography.size.body, color: C.textSecondary, marginBottom: Spacing.lg },
+    kitRow:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: C.borderLight },
+    kitRowIcon:   { fontSize: 24, width: 32, textAlign: 'center' },
+    kitRowName:   { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: C.textPrimary, flex: 1 },
+    kitRowCount:  { fontSize: Typography.size.body, color: C.textTertiary },
+    modalCancel:  { marginTop: Spacing.lg, alignItems: 'center', padding: Spacing.md },
+    modalCancelText: { fontSize: Typography.size.base, color: C.textSecondary, fontWeight: Typography.weight.semibold },
   });
 }
 
@@ -134,11 +148,16 @@ export function MedicineDetailScreen() {
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
 
-  const medicine  = useAppStore(st => st.getMedicine(medicineId));
-  const kit       = useAppStore(st => st.getKit(kitId));
-  const medicines = useAppStore(st => st.medicines);
-  const decrement = useAppStore(st => st.decrementQuantity);
-  const deleteMed = useAppStore(st => st.deleteMedicine);
+  const medicine        = useAppStore(st => st.getMedicine(medicineId));
+  const kit             = useAppStore(st => st.getKit(kitId));
+  const medicines       = useAppStore(st => st.medicines);
+  const kits            = useAppStore(st => st.kits);
+  const decrement       = useAppStore(st => st.decrementQuantity);
+  const deleteMed       = useAppStore(st => st.deleteMedicine);
+  const addMedicine     = useAppStore(st => st.addMedicine);
+  const addShoppingItem = useAppStore(st => st.addShoppingItem);
+
+  const [kitPickerVisible, setKitPickerVisible] = React.useState(false);
 
   const expiryInfo = useExpiryLabel(medicine?.expirationDate ?? new Date().toISOString());
 
@@ -172,8 +191,34 @@ export function MedicineDetailScreen() {
   function handleDelete() {
     Alert.alert(t('delete_medicine'), `${t('delete_medicine')} «${medicine!.name}»?`, [
       { text: t('cancel'), style: 'cancel' },
-      { text: t('delete'), style: 'destructive', onPress: () => { deleteMed(medicineId); navigation.goBack(); } },
+      { text: t('delete'), style: 'destructive', onPress: () => { deleteMed(medicineId); cancelMedicineExpiry(medicineId).catch(() => {}); navigation.goBack(); } },
     ]);
+  }
+
+  function handleAddToShopping() {
+    const med = medicine!;
+    addShoppingItem({
+      id:        Date.now().toString(),
+      name:      med.name,
+      form:      med.form,
+      dosage:    med.dosage,
+      quantity:  1,
+      notes:     med.manufacturer ?? undefined,
+      createdAt: new Date().toISOString(),
+    });
+    Alert.alert('', t('added_to_shopping'));
+  }
+
+  function handleCopyToKit(targetKit: MedicineKit) {
+    const med = medicine!;
+    addMedicine({
+      ...med,
+      id:    Date.now().toString(),
+      kitId: targetKit.id,
+      createdAt: new Date().toISOString(),
+    });
+    setKitPickerVisible(false);
+    Alert.alert('', `${med.name} → ${targetKit.icon} ${targetKit.name}`);
   }
 
   return (
@@ -188,7 +233,7 @@ export function MedicineDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={s.heroName}>{medicine.name}</Text>
             <Text style={s.heroForm}>
-              {medicine.dosage ? `${medicine.dosage} · ` : ''}{FORM_LABELS[medicine.form] ?? medicine.form}
+              {medicine.dosage ? `${medicine.dosage} · ` : ''}{t(`shm_form_${medicine.form}` as any)}
             </Text>
             {medicine.manufacturer ? <Text style={s.heroManuf}>{medicine.manufacturer}</Text> : null}
             <StatusBadge status={status} style={{ alignSelf: 'flex-start', marginTop: 6 }} />
@@ -199,7 +244,7 @@ export function MedicineDetailScreen() {
         <View style={s.card}>
           <View style={s.infoRow}>
             <Text style={s.infoLabel}>{t('remaining')}</Text>
-            <Text style={s.infoVal}>{medicine.remainingQuantity} из {medicine.totalQuantity}</Text>
+            <Text style={s.infoVal}>{medicine.remainingQuantity} {t('shm_share_of')} {medicine.totalQuantity}</Text>
           </View>
           <View style={s.bar}>
             <View style={[s.barFill, {
@@ -307,7 +352,7 @@ export function MedicineDetailScreen() {
         ) : null}
 
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
-          <WarningBanner emoji="🚫" title={t('incompatible_substances')} body={medicine.incompatibleWith.join(', ')} />
+          <WarningBanner icon="cancel" title={t('incompatible_substances')} body={medicine.incompatibleWith.join(', ')} />
         ) : null}
 
         {medicine.storageNotes ? (
@@ -338,13 +383,32 @@ export function MedicineDetailScreen() {
           }} />
           <ActionBtn label={t('delete')}  icon="delete"           danger onPress={handleDelete} />
         </View>
+        {/* ── Share / add actions ── */}
         <TouchableOpacity
-          style={s.shareBtn}
+          style={[s.wideBtn, { backgroundColor: C.blueLight }]}
           onPress={() => navigation.navigate('ShareMedicine', { medicineId, kitId })}
           activeOpacity={0.85}
         >
           <Icon name="share-variant" size={18} color={C.blue} />
-          <Text style={s.shareBtnText}>{t('share_medicine')}</Text>
+          <Text style={[s.wideBtnText, { color: C.blue }]}>{t('share_medicine')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.wideBtn, { backgroundColor: C.successLight }]}
+          onPress={handleAddToShopping}
+          activeOpacity={0.85}
+        >
+          <Icon name="cart-plus" size={18} color={C.successDark} />
+          <Text style={[s.wideBtnText, { color: C.successDark }]}>{t('add_to_shopping')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.wideBtn, { backgroundColor: C.bgCardAlt }]}
+          onPress={() => setKitPickerVisible(true)}
+          activeOpacity={0.85}
+        >
+          <Icon name="briefcase-plus-outline" size={18} color={C.textSecondary} />
+          <Text style={[s.wideBtnText, { color: C.textSecondary }]}>{t('copy_to_kit')}</Text>
         </TouchableOpacity>
 
         {medicine.incompatibleWith && medicine.incompatibleWith.length > 0 ? (
@@ -359,6 +423,32 @@ export function MedicineDetailScreen() {
         ) : null}
 
       </ScrollView>
+
+      {/* ── Kit picker modal ── */}
+      <Modal visible={kitPickerVisible} transparent animationType="slide" onRequestClose={() => setKitPickerVisible(false)}>
+        <TouchableOpacity style={s.modalBack} activeOpacity={1} onPress={() => setKitPickerVisible(false)}>
+          <View style={s.modalSheet}>
+            <Text style={s.modalTitle}>{t('copy_to_kit_title')}</Text>
+            <Text style={s.modalSub}>{t('choose_kit_to_copy')}</Text>
+            <FlatList
+              data={kits.filter(k => k.id !== kitId)}
+              keyExtractor={k => k.id}
+              scrollEnabled={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={s.kitRow} onPress={() => handleCopyToKit(item)} activeOpacity={0.75}>
+                  <Text style={s.kitRowIcon}>{item.icon}</Text>
+                  <Text style={s.kitRowName}>{item.name}</Text>
+                  <Text style={s.kitRowCount}>{medicines.filter(m => m.kitId === item.id).length} {t('pcs')}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={s.modalCancel} onPress={() => setKitPickerVisible(false)}>
+              <Text style={s.modalCancelText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </SafeAreaView>
   );
 }

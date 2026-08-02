@@ -4,10 +4,13 @@ import {
   StyleSheet, SafeAreaView, Alert, Switch, Image,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppStore } from '../store';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
+import { HueSlider } from '../components/HueSlider';
+import { useT } from '../i18n';
 import type { MedicineKit } from '../types';
 
 let launchImageLibrary: any;
@@ -16,9 +19,12 @@ try {
 } catch {}
 
 const ICONS = [
-  '🏡', '🏠', '👨‍👩‍👧', '🌿', '🚗', '🏖', '💼', '⛺️', '🏥', '🧳',
-  '❤️', '🌸', '🌞', '🐾', '🎒', '🍀', '⚽', '🎨', '🏋️', '✈️',
-  '🧘', '🍃', '💊', '🩺', '🧬', '🫁', '🦷', '👶', '🧓', '🐶',
+  'home',          'home-outline',   'account-group',  'leaf',          'car',
+  'umbrella',      'briefcase',      'tent',           'hospital-box',  'bag-suitcase',
+  'heart',         'flower-outline', 'weather-sunny',  'paw',           'school',
+  'sprout',        'soccer',         'palette',        'dumbbell',      'airplane',
+  'run',           'leaf-maple',     'pill',           'stethoscope',   'dna',
+  'lungs',         'tooth',          'baby',           'walk',          'dog',
 ];
 
 const COLORS = [
@@ -41,7 +47,6 @@ function makeStyles(C: ColorPalette) {
       marginBottom: Spacing.lg, overflow: 'hidden',
     },
     previewPhoto: { width: 80, height: 80, borderRadius: 40, marginBottom: Spacing.sm },
-    previewIcon:  { fontSize: 56, marginBottom: Spacing.sm },
     previewName:  { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: C.textPrimary },
     previewDesc:  { fontSize: Typography.size.body, color: C.textSecondary, marginTop: 4 },
 
@@ -74,7 +79,6 @@ function makeStyles(C: ColorPalette) {
 
     photoPickerBtn:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     photoThumb:      { width: 52, height: 52, borderRadius: 8 },
-    photoPickerIcon: { fontSize: 32 },
     photoPickerText: { fontSize: Typography.size.base, fontWeight: Typography.weight.semibold, color: C.textSecondary },
 
     colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -100,6 +104,7 @@ export function CreateEditKitScreen() {
   const kitId: string | undefined = route.params?.kitId;
   const C = useColors();
   const s = useMemo(() => makeStyles(C), [C]);
+  const t = useT();
 
   const existingKit = useAppStore(st => kitId ? st.getKit(kitId) : undefined);
   const addKit      = useAppStore(st => st.addKit);
@@ -109,19 +114,19 @@ export function CreateEditKitScreen() {
 
   const [name,        setName]        = useState(existingKit?.name        ?? '');
   const [description, setDescription] = useState(existingKit?.description ?? '');
-  const [icon,        setIcon]        = useState(existingKit?.icon        ?? '🏡');
+  const [icon,        setIcon]        = useState(existingKit?.icon        ?? 'home');
   const [colorTag,    setColorTag]    = useState(existingKit?.colorTag    ?? C.blue);
   const [isPrivate,   setIsPrivate]   = useState(existingKit?.isPrivate   ?? true);
   const [photoUri,    setPhotoUri]    = useState(existingKit?.photoUri    ?? '');
-  const [coverMode,   setCoverMode]   = useState<'emoji' | 'photo'>(
-    existingKit?.photoUri ? 'photo' : 'emoji',
+  const [coverMode,   setCoverMode]   = useState<'icon' | 'photo'>(
+    existingKit?.photoUri ? 'photo' : 'icon',
   );
   const priority = existingKit?.priority ?? 0;
   const isEditing = !!kitId;
 
   function handlePickPhoto() {
     if (!launchImageLibrary) {
-      Alert.alert('Недоступно', 'Модуль выбора фото не подключён.');
+      Alert.alert(t('cek_unavailable'), t('cek_photo_module_missing'));
       return;
     }
     launchImageLibrary({ mediaType: 'photo', quality: 0.7, selectionLimit: 1 }, (res: any) => {
@@ -132,7 +137,7 @@ export function CreateEditKitScreen() {
   }
 
   function handleSave() {
-    if (!name.trim()) { Alert.alert('Укажите название аптечки'); return; }
+    if (!name.trim()) { Alert.alert(t('cek_name_required')); return; }
     const now   = new Date().toISOString();
     const cover = coverMode === 'photo' && photoUri ? photoUri : undefined;
 
@@ -166,11 +171,11 @@ export function CreateEditKitScreen() {
 
   function handleDelete() {
     Alert.alert(
-      'Удалить аптечку',
-      `Удалить «${name}»? Все препараты в ней тоже будут удалены.`,
+      t('cek_delete_kit'),
+      t('cek_delete_confirm').replace('{name}', name),
       [
-        { text: 'Отмена', style: 'cancel' },
-        { text: 'Удалить', style: 'destructive', onPress: () => { deleteKit(kitId!); navigation.popToTop(); } },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('delete'), style: 'destructive', onPress: () => { deleteKit(kitId!); navigation.popToTop(); } },
       ],
     );
   }
@@ -184,18 +189,18 @@ export function CreateEditKitScreen() {
           {coverMode === 'photo' && photoUri ? (
             <Image source={{ uri: photoUri }} style={s.previewPhoto} resizeMode="cover" />
           ) : (
-            <Text style={s.previewIcon}>{icon}</Text>
+            <Icon name={icon} size={56} color={colorTag} style={{ marginBottom: Spacing.sm }} />
           )}
-          <Text style={s.previewName}>{name || 'Название аптечки'}</Text>
+          <Text style={s.previewName}>{name || t('cek_kit_name_preview')}</Text>
           {description ? <Text style={s.previewDesc}>{description}</Text> : null}
         </View>
 
         {/* Name */}
-        <Text style={s.label}>Название *</Text>
+        <Text style={s.label}>{t('cek_name_label')}</Text>
         <View style={s.card}>
           <TextInput
             style={s.input}
-            placeholder="Домашняя аптечка"
+            placeholder={t('cek_name_placeholder')}
             placeholderTextColor={C.textTertiary}
             value={name}
             onChangeText={setName}
@@ -203,11 +208,11 @@ export function CreateEditKitScreen() {
         </View>
 
         {/* Description */}
-        <Text style={s.label}>Описание / Местоположение</Text>
+        <Text style={s.label}>{t('cek_desc_label')}</Text>
         <View style={s.card}>
           <TextInput
             style={s.input}
-            placeholder="Кухонный шкаф, 2-я полка"
+            placeholder={t('cek_desc_placeholder')}
             placeholderTextColor={C.textTertiary}
             value={description}
             onChangeText={setDescription}
@@ -215,34 +220,34 @@ export function CreateEditKitScreen() {
         </View>
 
         {/* Cover mode toggle */}
-        <Text style={s.label}>Обложка</Text>
+        <Text style={s.label}>{t('cek_cover_label')}</Text>
         <View style={[s.card, s.coverToggle]}>
           <TouchableOpacity
-            style={[s.coverTab, coverMode === 'emoji' && { backgroundColor: colorTag + '33' }]}
-            onPress={() => setCoverMode('emoji')} activeOpacity={0.8}
+            style={[s.coverTab, coverMode === 'icon' && { backgroundColor: colorTag + '33' }]}
+            onPress={() => setCoverMode('icon')} activeOpacity={0.8}
           >
-            <Text style={[s.coverTabText, coverMode === 'emoji' && { color: colorTag }]}>Иконка</Text>
+            <Text style={[s.coverTabText, coverMode === 'icon' && { color: colorTag }]}>{t('cek_tab_icon')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.coverTab, coverMode === 'photo' && { backgroundColor: colorTag + '33' }]}
             onPress={() => { setCoverMode('photo'); if (!photoUri) handlePickPhoto(); }} activeOpacity={0.8}
           >
-            <Text style={[s.coverTabText, coverMode === 'photo' && { color: colorTag }]}>Фото</Text>
+            <Text style={[s.coverTabText, coverMode === 'photo' && { color: colorTag }]}>{t('cek_tab_photo')}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Emoji grid */}
-        {coverMode === 'emoji' && (
+        {/* Icon grid */}
+        {coverMode === 'icon' && (
           <>
-            <Text style={s.label}>Иконка</Text>
+            <Text style={s.label}>{t('cek_tab_icon')}</Text>
             <View style={[s.card, s.iconGrid]}>
               {ICONS.map(ic => (
                 <TouchableOpacity
                   key={ic}
-                  style={[s.iconOption, icon === ic && { borderColor: colorTag, borderWidth: 2.5 }]}
+                  style={[s.iconOption, icon === ic && { borderColor: colorTag, borderWidth: 2.5, backgroundColor: colorTag + '22' }]}
                   onPress={() => setIcon(ic)} activeOpacity={0.8}
                 >
-                  <Text style={{ fontSize: 24 }}>{ic}</Text>
+                  <Icon name={ic} size={26} color={icon === ic ? colorTag : C.textSecondary} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -255,16 +260,16 @@ export function CreateEditKitScreen() {
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={s.photoThumb} resizeMode="cover" />
             ) : (
-              <Text style={s.photoPickerIcon}>📷</Text>
+              <Icon name="camera" size={32} color={C.textSecondary} />
             )}
             <Text style={[s.photoPickerText, photoUri && { color: colorTag }]}>
-              {photoUri ? 'Изменить фото' : 'Выбрать из галереи'}
+              {photoUri ? t('cek_change_photo') : t('cek_pick_gallery')}
             </Text>
           </TouchableOpacity>
         )}
 
         {/* Color palette */}
-        <Text style={s.label}>Цвет</Text>
+        <Text style={s.label}>{t('cek_color_label')}</Text>
         <View style={[s.card, s.colorGrid]}>
           {COLORS.map(c => (
             <TouchableOpacity
@@ -274,12 +279,20 @@ export function CreateEditKitScreen() {
             />
           ))}
         </View>
+        {/* Custom color hue slider */}
+        <View style={[s.card, { padding: Spacing.md }]}>
+          <HueSlider
+            label={t('cek_color_custom')}
+            value={colorTag}
+            onChange={setColorTag}
+          />
+        </View>
 
         {/* Privacy toggle */}
         <View style={[s.card, s.toggleRow]}>
           <View style={{ flex: 1, paddingRight: Spacing.md }}>
-            <Text style={s.toggleLabel}>Личная аптечка</Text>
-            <Text style={s.toggleDesc}>Только вы можете видеть эту аптечку</Text>
+            <Text style={s.toggleLabel}>{t('cek_private_label')}</Text>
+            <Text style={s.toggleDesc}>{t('cek_private_desc')}</Text>
           </View>
           <Switch
             value={isPrivate}
@@ -291,12 +304,12 @@ export function CreateEditKitScreen() {
 
         {/* Save */}
         <TouchableOpacity style={[s.saveBtn, { backgroundColor: colorTag }]} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={s.saveBtnText}>{isEditing ? 'Сохранить изменения' : 'Создать аптечку'}</Text>
+          <Text style={s.saveBtnText}>{isEditing ? t('cek_save_changes') : t('cek_create_kit')}</Text>
         </TouchableOpacity>
 
         {isEditing && (
           <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
-            <Text style={s.deleteBtnText}>Удалить аптечку</Text>
+            <Text style={s.deleteBtnText}>{t('cek_delete_kit')}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

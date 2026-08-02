@@ -54,23 +54,37 @@ export function pushToUser(userId: string, event: unknown): void {
 export function attachRealtime(server: Server): void {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
-  wss.on('connection', (ws, req) => {
-    const url = new URL(req.url ?? '', 'http://localhost');
-    const t = url.searchParams.get('token') ?? '';
-    const userId = t ? verifyToken(t) : null;
-    if (!userId) { ws.close(4001, 'unauthorized'); return; }
+  wss.on('connection', (ws) => {
+    // Auth is sent as the first message frame — token never appears in URL / logs.
+    let userId: string | null = null;
+    const authDeadline = setTimeout(() => {
+      if (!userId) ws.close(4001, 'unauthorized');
+    }, 5_000); // must authenticate within 5 s
 
-    add(userId, ws);
-    ws.send(JSON.stringify({ type: 'connected' }));
-
-    ws.on('close', () => remove(userId, ws));
-    ws.on('error', () => remove(userId, ws));
-    // Heartbeat so clients can keep the connection alive.
     ws.on('message', raw => {
       try {
         const msg = JSON.parse(raw.toString());
+
+        if (!userId) {
+          // Expecting { type: 'auth', token: '...' } as the first frame
+          if (msg?.type === 'auth' && msg.token) {
+            clearTimeout(authDeadline);
+            const verified = verifyToken(msg.token);
+            if (!verified) { ws.close(4001, 'unauthorized'); return; }
+            userId = verified.userId;
+            add(userId, ws);
+            ws.send(JSON.stringify({ type: 'connected' }));
+          } else {
+            ws.close(4001, 'unauthorized');
+          }
+          return;
+        }
+
         if (msg?.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
       } catch { /* ignore malformed frames */ }
     });
+
+    ws.on('close', () => { if (userId) remove(userId, ws); clearTimeout(authDeadline); });
+    ws.on('error', () => { if (userId) remove(userId, ws); });
   });
 }

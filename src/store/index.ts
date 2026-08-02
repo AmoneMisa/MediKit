@@ -1,14 +1,18 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { MMKV } from 'react-native-mmkv';
-import type { MedicineKit, Medicine, AppNotification, UserProfile, AppSettings, MedicineStatus, Person, MedicineReminder, ShoppingItem, MedicineIntakeLog } from '../types';
+import { LazyMMKV } from '../utils/createSecureMMKV';
+import type { MedicineKit, Medicine, AppNotification, UserProfile, AppSettings, MedicineStatus, Person, MedicineReminder, ShoppingItem, MedicineIntakeLog, Doctor, DoctorAppointment } from '../types';
 import {
   pushKitCreate, pushKitUpdate, pushKitDelete,
   pushMedicineUpsert, pushMedicineDelete,
   pushNotificationRead, pushAllNotificationsRead, pushNotificationDismiss,
+  pushDoctorUpsert, pushDoctorPatch, pushDoctorDelete,
+  pushAppointmentUpsert, pushAppointmentPatch, pushAppointmentDelete,
 } from '../api/outbox';
 
-const mmkv = new MMKV({ id: 'medikit-store' });
+// LazyMMKV defers opening the file until first access, giving bootstrapSecurity()
+// time to set the encryption key before any data is read or written.
+const mmkv = new LazyMMKV('medikit-store');
 
 const mmkvStorage = {
   getItem: (name: string): string | null => mmkv.getString(name) ?? null,
@@ -88,6 +92,16 @@ interface AppStore {
   deleteIntakeLog: (id: string) => void;
   getIntakeLogsForDate: (date: string) => MedicineIntakeLog[];
 
+  doctors: Doctor[];
+  addDoctor: (doctor: Doctor) => void;
+  updateDoctor: (id: string, changes: Partial<Doctor>) => void;
+  deleteDoctor: (id: string) => void;
+
+  appointments: DoctorAppointment[];
+  addAppointment: (a: DoctorAppointment) => void;
+  updateAppointment: (id: string, changes: Partial<DoctorAppointment>) => void;
+  deleteAppointment: (id: string) => void;
+
   updateSettings: (changes: Partial<AppSettings>) => void;
 
   getMedicinesForKit: (kitId: string) => Medicine[];
@@ -105,12 +119,18 @@ interface AppStore {
     medicines?: Medicine[];
     notifications?: AppNotification[];
     persons?: Person[];
+    doctors?: Doctor[];
+    appointments?: DoctorAppointment[];
   }) => void;
   mergeKit: (kit: MedicineKit) => void;
   removeKitLocal: (kitId: string) => void;
   mergeMedicine: (medicine: Medicine) => void;
   removeMedicineLocal: (medicineId: string) => void;
   addNotificationLocal: (notification: AppNotification) => void;
+  mergeAppointment: (appointment: DoctorAppointment) => void;
+  removeAppointmentLocal: (appointmentId: string) => void;
+  mergeDoctor: (doctor: Doctor) => void;
+  removeDoctorLocal: (doctorId: string) => void;
 }
 
 const DEFAULT_USER: UserProfile = {
@@ -133,6 +153,8 @@ export const useAppStore = create<AppStore>()(
       reminders: [],
       shoppingItems: [],
       intakeLogs: [],
+      doctors: [],
+      appointments: [],
       settings: {
         theme: 'system',
         language: 'ru',
@@ -262,6 +284,46 @@ export const useAppStore = create<AppStore>()(
         set(s => ({ intakeLogs: s.intakeLogs.filter(l => l.id !== id) })),
       getIntakeLogsForDate: date => get().intakeLogs.filter(l => l.date === date),
 
+      addDoctor: doctor => {
+        set(s => ({ doctors: [...s.doctors, doctor] }));
+        pushDoctorUpsert(doctor);
+      },
+      updateDoctor: (id, changes) => {
+        let updated: Doctor | undefined;
+        set(s => ({
+          doctors: s.doctors.map(d => {
+            if (d.id !== id) return d;
+            updated = { ...d, ...changes, updatedAt: new Date().toISOString() };
+            return updated;
+          }),
+        }));
+        if (updated) pushDoctorPatch(id, changes);
+      },
+      deleteDoctor: id => {
+        set(s => ({ doctors: s.doctors.filter(d => d.id !== id) }));
+        pushDoctorDelete(id);
+      },
+
+      addAppointment: a => {
+        set(s => ({ appointments: [...s.appointments, a] }));
+        pushAppointmentUpsert(a);
+      },
+      updateAppointment: (id, changes) => {
+        let updated: DoctorAppointment | undefined;
+        set(s => ({
+          appointments: s.appointments.map(a => {
+            if (a.id !== id) return a;
+            updated = { ...a, ...changes, updatedAt: new Date().toISOString() };
+            return updated;
+          }),
+        }));
+        if (updated) pushAppointmentPatch(id, changes);
+      },
+      deleteAppointment: id => {
+        set(s => ({ appointments: s.appointments.filter(a => a.id !== id) }));
+        pushAppointmentDelete(id);
+      },
+
       updateSettings: changes => set(s => ({ settings: { ...s.settings, ...changes } })),
 
       getMedicinesForKit: kitId => get().medicines.filter(m => m.kitId === kitId),
@@ -285,11 +347,17 @@ export const useAppStore = create<AppStore>()(
           medicines: data.medicines ?? s.medicines,
           notifications: data.notifications ?? s.notifications,
           persons: data.persons ?? s.persons,
+          doctors: data.doctors ?? s.doctors,
+          appointments: data.appointments ?? s.appointments,
         })),
       mergeKit: kit =>
         set(s => ({
           kits: s.kits.some(k => k.id === kit.id)
-            ? s.kits.map(k => (k.id === kit.id ? kit : k))
+            ? s.kits.map(k => {
+                if (k.id !== kit.id) return k;
+                // Server-wins only when incoming is newer or same age
+                return new Date(kit.updatedAt) >= new Date(k.updatedAt) ? kit : k;
+              })
             : [...s.kits, kit],
         })),
       removeKitLocal: kitId =>
@@ -300,7 +368,10 @@ export const useAppStore = create<AppStore>()(
       mergeMedicine: medicine =>
         set(s => ({
           medicines: s.medicines.some(m => m.id === medicine.id)
-            ? s.medicines.map(m => (m.id === medicine.id ? medicine : m))
+            ? s.medicines.map(m => {
+                if (m.id !== medicine.id) return m;
+                return new Date(medicine.updatedAt) >= new Date(m.updatedAt) ? medicine : m;
+              })
             : [...s.medicines, medicine],
         })),
       removeMedicineLocal: medicineId =>
@@ -311,10 +382,37 @@ export const useAppStore = create<AppStore>()(
             ? {}
             : { notifications: [notification, ...s.notifications] }
         )),
+      mergeAppointment: appointment =>
+        set(s => ({
+          appointments: s.appointments.some(a => a.id === appointment.id)
+            ? s.appointments.map(a => {
+                if (a.id !== appointment.id) return a;
+                if (new Date(appointment.updatedAt) < new Date(a.updatedAt)) return a;
+                // Preserve device-local calendarEventId — it's not synced to server
+                return { ...appointment, calendarEventId: a.calendarEventId };
+              })
+            : [...s.appointments, appointment],
+        })),
+      removeAppointmentLocal: appointmentId =>
+        set(s => ({ appointments: s.appointments.filter(a => a.id !== appointmentId) })),
+      mergeDoctor: doctor =>
+        set(s => ({
+          doctors: s.doctors.some(d => d.id === doctor.id)
+            ? s.doctors.map(d => {
+                if (d.id !== doctor.id) return d;
+                return new Date(doctor.updatedAt) >= new Date(d.updatedAt) ? doctor : d;
+              })
+            : [...s.doctors, doctor],
+        })),
+      removeDoctorLocal: doctorId =>
+        set(s => ({ doctors: s.doctors.filter(d => d.id !== doctorId) })),
     }),
     {
       name: 'medikit-data',
       storage: createJSONStorage(() => mmkvStorage),
+      // Do NOT auto-hydrate on create — App.tsx calls rehydrate() explicitly
+      // after bootstrapSecurity() has set the encryption key.
+      skipHydration: true,
     },
   ),
 );

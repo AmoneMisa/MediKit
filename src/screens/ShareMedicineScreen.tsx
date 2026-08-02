@@ -17,41 +17,51 @@ import { MedicineIcon, StatusBadge } from '../components';
 
 type Route = RouteProp<KitsStackParamList, 'ShareMedicine'>;
 
-const FORM_LABELS: Record<string, string> = {
-  tablets: 'Таблетки', capsules: 'Капсулы', syrup: 'Сироп',
-  spray: 'Спрей', drops: 'Капли', ointment: 'Мазь',
-  injection: 'Инъекция', powder: 'Порошок', patch: 'Пластырь', other: 'Другое',
-};
+function makeFormLabels(t: (k: any) => string): Record<string, string> {
+  return {
+    tablets: t('shm_form_tablets'), capsules: t('shm_form_capsules'), syrup: t('shm_form_syrup'),
+    spray: t('shm_form_spray'), drops: t('shm_form_drops'), ointment: t('shm_form_ointment'),
+    injection: t('shm_form_injection'), powder: t('shm_form_powder'), patch: t('shm_form_patch'), other: t('shm_form_other'),
+  };
+}
 
-const TAG_LABELS: Record<string, string> = {
-  pain: 'Боль', fever: 'Температура', sleep: 'Сон', allergy: 'Аллергия',
-  cold: 'Простуда', stomach: 'ЖКТ', heart: 'Сердце', nerves: 'Нервы',
-  muscles: 'Мышцы', antiseptic: 'Антисептик', antibiotic: 'Антибиотик',
-  vitamins: 'Витамины', pressure: 'Давление', skin: 'Кожа', eyes: 'Глаза',
-  diabetes: 'Диабет',
-};
+function makeTagLabels(t: (k: any) => string): Record<string, string> {
+  return {
+    pain: t('shm_tag_pain'), fever: t('shm_tag_fever'), sleep: t('shm_tag_sleep'), allergy: t('shm_tag_allergy'),
+    cold: t('shm_tag_cold'), stomach: t('shm_tag_stomach'), heart: t('shm_tag_heart'), nerves: t('shm_tag_nerves'),
+    muscles: t('shm_tag_muscles'), antiseptic: t('shm_tag_antiseptic'), antibiotic: t('shm_tag_antibiotic'),
+    vitamins: t('shm_tag_vitamins'), pressure: t('shm_tag_pressure'), skin: t('shm_tag_skin'), eyes: t('shm_tag_eyes'),
+    diabetes: t('shm_tag_diabetes'),
+  };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function buildShareText(medicine: NonNullable<ReturnType<ReturnType<typeof useAppStore>['getMedicine']>>, expiryLabel: string): string {
+function buildShareText(
+  medicine: NonNullable<ReturnType<ReturnType<typeof useAppStore>['getMedicine']>>,
+  expiryLabel: string,
+  t: (k: any) => string,
+  formLabels: Record<string, string>,
+  tagLabels: Record<string, string>,
+): string {
   const lines: string[] = [];
   lines.push(`💊 ${medicine.name}${medicine.dosage ? ` ${medicine.dosage}` : ''}`);
-  lines.push(`📋 Форма: ${FORM_LABELS[medicine.form] ?? medicine.form}`);
-  if (medicine.manufacturer) lines.push(`🏭 Производитель: ${medicine.manufacturer}`);
-  if (medicine.activeIngredient) lines.push(`🔬 Д.в.: ${medicine.activeIngredient}`);
-  lines.push(`📦 Остаток: ${medicine.remainingQuantity} из ${medicine.totalQuantity}`);
-  lines.push(`📅 Срок годности: ${expiryLabel}`);
+  lines.push(`📋 ${t('shm_share_form')} ${formLabels[medicine.form] ?? medicine.form}`);
+  if (medicine.manufacturer) lines.push(`🏭 ${t('shm_share_manufacturer')} ${medicine.manufacturer}`);
+  if (medicine.activeIngredient) lines.push(`🔬 ${t('shm_share_active_ingredient')} ${medicine.activeIngredient}`);
+  lines.push(`📦 ${t('shm_share_remaining')} ${medicine.remainingQuantity} ${t('shm_share_of')} ${medicine.totalQuantity}`);
+  lines.push(`📅 ${t('shm_share_expiry')} ${expiryLabel}`);
   if (medicine.tags && medicine.tags.length > 0) {
-    const tagStr = medicine.tags.map(t => TAG_LABELS[t] ?? t).join(', ');
-    lines.push(`🏷 Применяется при: ${tagStr}`);
+    const tagStr = medicine.tags.map(tag => tagLabels[tag] ?? tag).join(', ');
+    lines.push(`🏷 ${t('shm_share_used_for')} ${tagStr}`);
   }
   if (medicine.description) lines.push(`\nℹ️ ${medicine.description}`);
   if (medicine.usageNotes)   lines.push(`\n💡 ${medicine.usageNotes}`);
   if (medicine.warnings && medicine.warnings.length > 0) {
-    lines.push(`\n⚠️ Противопоказания: ${medicine.warnings.join(', ')}`);
+    lines.push(`\n⚠️ ${t('shm_share_contraindications')} ${medicine.warnings.join(', ')}`);
   }
-  if (medicine.storageNotes) lines.push(`🌡 Хранение: ${medicine.storageNotes}`);
-  lines.push('\n📲 Добавьте этот препарат в MediKit: https://medikit.app');
+  if (medicine.storageNotes) lines.push(`🌡 ${t('shm_share_storage')} ${medicine.storageNotes}`);
+  lines.push(`\n📲 ${t('shm_share_footer')}`);
   return lines.join('\n');
 }
 
@@ -85,7 +95,7 @@ function makeStyles(C: ColorPalette) {
     tagText: { fontSize: Typography.size.xs, color: C.blue, fontWeight: Typography.weight.semibold },
 
     warnRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginTop: Spacing.xs },
-    warnTag: { backgroundColor: C.warningLight, borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 3 },
+    warnTag: { backgroundColor: C.warningLight, borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 4 },
     warnText: { fontSize: Typography.size.xs, color: C.warningDark, fontWeight: Typography.weight.semibold },
 
     sectionLabel: {
@@ -134,15 +144,18 @@ export function ShareMedicineScreen() {
 
   const [copied, setCopied] = useState(false);
 
+  const formLabels = makeFormLabels(t);
+  const tagLabels  = makeTagLabels(t);
+
   if (!medicine) {
     return (
       <SafeAreaView style={s.root}>
-        <Text style={{ padding: 20, color: C.textPrimary }}>Препарат не найден</Text>
+        <Text style={{ padding: 20, color: C.textPrimary }}>{t('medicine_not_found')}</Text>
       </SafeAreaView>
     );
   }
 
-  const shareText = buildShareText(medicine, expiryInfo.label);
+  const shareText = buildShareText(medicine, expiryInfo.label, t, formLabels, tagLabels);
   const status    = getMedicineStatus(medicine);
 
   async function handleNativeShare() {
@@ -185,7 +198,7 @@ export function ShareMedicineScreen() {
               <Text style={s.previewName}>{medicine.name}</Text>
               <Text style={s.previewForm}>
                 {medicine.dosage ? `${medicine.dosage} · ` : ''}
-                {FORM_LABELS[medicine.form] ?? medicine.form}
+                {formLabels[medicine.form] ?? medicine.form}
               </Text>
               <StatusBadge status={status} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
             </View>
@@ -193,27 +206,27 @@ export function ShareMedicineScreen() {
 
           <View style={[s.infoRow, { borderBottomWidth: 0 }]}>
             <Icon name="package-variant" size={16} color={C.textTertiary} />
-            <Text style={s.infoLabel}>Остаток</Text>
-            <Text style={s.infoVal}>{medicine.remainingQuantity} из {medicine.totalQuantity}</Text>
+            <Text style={s.infoLabel}>{t('remaining')}</Text>
+            <Text style={s.infoVal}>{medicine.remainingQuantity} {t('shm_share_of')} {medicine.totalQuantity}</Text>
           </View>
           <View style={s.infoRow}>
             <Icon name="calendar" size={16} color={expiryInfo.isExpired ? C.danger : C.textTertiary} />
-            <Text style={s.infoLabel}>Срок годности</Text>
+            <Text style={s.infoLabel}>{t('expiry_date')}</Text>
             <Text style={[s.infoVal, expiryInfo.isExpired && { color: C.dangerDark }]}>{expiryInfo.label}</Text>
           </View>
           {kit ? (
             <View style={[s.infoRow, { borderBottomWidth: 0 }]}>
               <Icon name="medical-bag" size={16} color={C.textTertiary} />
-              <Text style={s.infoLabel}>Аптечка</Text>
+              <Text style={s.infoLabel}>{t('kit_label')}</Text>
               <Text style={s.infoVal}>{kit.icon} {kit.name}</Text>
             </View>
           ) : null}
 
           {medicine.tags && medicine.tags.length > 0 && (
             <View style={s.tagRow}>
-              {medicine.tags.map(t => (
-                <View key={t} style={s.tag}>
-                  <Text style={s.tagText}>{TAG_LABELS[t] ?? t}</Text>
+              {medicine.tags.map(tag => (
+                <View key={tag} style={s.tag}>
+                  <Text style={s.tagText}>{tagLabels[tag] ?? tag}</Text>
                 </View>
               ))}
             </View>
@@ -222,7 +235,7 @@ export function ShareMedicineScreen() {
             <View style={s.warnRow}>
               {medicine.warnings.map((w, i) => (
                 <View key={i} style={s.warnTag}>
-                  <Text style={s.warnText}>⚠️ {w}</Text>
+                  <Icon name="alert" size={13} color={C.warningDark} />{' '}<Text style={s.warnText}>{w}</Text>
                 </View>
               ))}
             </View>
@@ -233,12 +246,12 @@ export function ShareMedicineScreen() {
         <Text style={s.sectionLabel}>{t('share_via')}</Text>
 
         <TouchableOpacity style={[s.shareBtn, s.tgBtn]} onPress={handleTelegram} activeOpacity={0.85}>
-          <Text style={{ fontSize: 20 }}>✈️</Text>
+          <Icon name="send" size={20} color={C.white} />
           <Text style={s.shareBtnText}>Telegram</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[s.shareBtn, s.waBtn]} onPress={handleWhatsApp} activeOpacity={0.85}>
-          <Text style={{ fontSize: 20 }}>💬</Text>
+          <Icon name="whatsapp" size={20} color={C.white} />
           <Text style={s.shareBtnText}>WhatsApp</Text>
         </TouchableOpacity>
 

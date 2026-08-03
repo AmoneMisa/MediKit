@@ -99,7 +99,7 @@ interface DoctorRow {
   created_at: string; updated_at: string;
 }
 
-function toDoctor(r: DoctorRow): Doctor {
+function toDoctor(r: DoctorRow) {
   return {
     id: r.id,
     name: r.name,

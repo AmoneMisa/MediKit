@@ -249,6 +249,18 @@ export async function initDb(): Promise<void> {
       expires_at TEXT NOT NULL     -- ISO timestamp; row can be purged after this
     );
     CREATE INDEX IF NOT EXISTS idx_blocklist_exp ON token_blocklist(expires_at);
+
+    -- Scrape job history: tracks scheduler runs and prevents duplicate execution.
+    CREATE TABLE IF NOT EXISTS scrape_jobs (
+      id            TEXT PRIMARY KEY,
+      type          TEXT NOT NULL DEFAULT 'hospitals',
+      started_at    TEXT NOT NULL,
+      finished_at   TEXT,
+      status        TEXT NOT NULL DEFAULT 'running',  -- 'running' | 'done' | 'error'
+      rows_upserted INTEGER,
+      error_msg     TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_scrape_jobs_type ON scrape_jobs(type, started_at);
   `);
 
   // Purge expired blocklist entries once per hour so the table stays small.

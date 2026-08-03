@@ -3,13 +3,10 @@
  * the doctors_catalog table. Covers public hospitals, private clinics, dentists,
  * and specialty practices. Also seeds well-known online doctor platforms manually.
  *
- * Usage: DATABASE_URL=postgresql://... npm run scrape
- *    or: npx tsx src/scripts/scrapeHospitals.ts
+ * Usage (CLI):  DATABASE_URL=postgresql://... npm run scrape
+ * Usage (code): import { runScrape } from './scrapeHospitals.js'; await runScrape(pool);
  */
 import pg from 'pg';
-
-const DB_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/medikit';
-const pool = new pg.Pool({ connectionString: DB_URL });
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
@@ -200,68 +197,70 @@ interface ManualEntry {
   city: string;
   phone?: string;
   address?: string;
+  isFree?: boolean;
+  cost?: string;   // price range / description
   notes?: string;
 }
 
 const MANUAL_ENTRIES: ManualEntry[] = [
   // Ukraine — private clinic chains
-  { id: 'dc-manual-dobrobut-ua',     name: 'Добробут',              speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              notes: 'Private multi-specialty clinic chain | Web: dobrobut.com' },
-  { id: 'dc-manual-boris-ua',        name: 'Борис (BORIS)',         speciality: 'Hospital',     country: 'Ukraine',     city: 'Kyiv',              notes: 'Private hospital | Web: borismedical.com' },
-  { id: 'dc-manual-feofaniya-ua',    name: 'Феофанія',              speciality: 'Hospital',     country: 'Ukraine',     city: 'Kyiv',              notes: 'Clinical hospital with wide specialities | Web: feofaniya.com' },
-  { id: 'dc-manual-onclinic-ua',     name: 'OnClinic Ukraine',      speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              notes: 'Private clinic network | Web: onclinic.ua' },
-  { id: 'dc-manual-oberig-ua',       name: 'Oberig Medical Center', speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              notes: 'Private medical center | Web: oberig.com.ua' },
-  { id: 'dc-manual-medicover-ua',    name: 'Medicover Ukraine',     speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              notes: 'International private clinic | Web: medicover.ua' },
+  { id: 'dc-manual-dobrobut-ua',     name: 'Добробут',              speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              isFree: false, cost: 'від 500 грн / consultation',  notes: 'Private multi-specialty clinic chain | Web: dobrobut.com' },
+  { id: 'dc-manual-boris-ua',        name: 'Борис (BORIS)',         speciality: 'Hospital',     country: 'Ukraine',     city: 'Kyiv',              isFree: false, cost: 'від 700 грн / consultation',  notes: 'Private hospital | Web: borismedical.com' },
+  { id: 'dc-manual-feofaniya-ua',    name: 'Феофанія',              speciality: 'Hospital',     country: 'Ukraine',     city: 'Kyiv',              isFree: false, notes: 'Clinical hospital with wide specialities | Web: feofaniya.com' },
+  { id: 'dc-manual-onclinic-ua',     name: 'OnClinic Ukraine',      speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              isFree: false, cost: 'від 400 грн / visit',         notes: 'Private clinic network | Web: onclinic.ua' },
+  { id: 'dc-manual-oberig-ua',       name: 'Oberig Medical Center', speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              isFree: false, notes: 'Private medical center | Web: oberig.com.ua' },
+  { id: 'dc-manual-medicover-ua',    name: 'Medicover Ukraine',     speciality: 'Clinic',       country: 'Ukraine',     city: 'Kyiv',              isFree: false, cost: 'від 800 грн / visit',         notes: 'International private clinic | Web: medicover.ua' },
   // Ukraine — online platforms
-  { id: 'dc-online-doc-ua',          name: 'DOC.UA',                speciality: 'Clinic',       country: 'Ukraine',     city: 'Online',            notes: 'Online doctor booking platform | Web: doc.ua' },
-  { id: 'dc-online-helsi-ua',        name: 'Helsi',                 speciality: 'Clinic',       country: 'Ukraine',     city: 'Online',            notes: 'Online appointment booking | Web: helsi.me' },
-  { id: 'dc-online-likar-ua',        name: 'Likar.info',            speciality: 'Clinic',       country: 'Ukraine',     city: 'Online',            notes: 'Doctor search & appointments | Web: likar.info' },
+  { id: 'dc-online-doc-ua',          name: 'DOC.UA',                speciality: 'Clinic',       country: 'Ukraine',     city: 'Online',            isFree: false, cost: 'від 300 грн / консультація',  notes: 'Online doctor booking platform | Web: doc.ua' },
+  { id: 'dc-online-helsi-ua',        name: 'Helsi',                 speciality: 'Clinic',       country: 'Ukraine',     city: 'Online',            isFree: false, notes: 'Online appointment booking | Web: helsi.me' },
+  { id: 'dc-online-likar-ua',        name: 'Likar.info',            speciality: 'Clinic',       country: 'Ukraine',     city: 'Online',            isFree: false, notes: 'Doctor search & appointments | Web: likar.info' },
   // Russia — private clinic chains
-  { id: 'dc-manual-medsi-ru',        name: 'МЕДСИ',                 speciality: 'Clinic',       country: 'Russia',      city: 'Moscow',            notes: 'Private multi-specialty clinic chain | Web: medsi.ru' },
-  { id: 'dc-manual-smclinic-ru',     name: 'СМ-Клиника',            speciality: 'Clinic',       country: 'Russia',      city: 'Moscow',            notes: 'Private clinic chain | Web: smclinic.ru' },
-  { id: 'dc-manual-emc-ru',          name: 'Европейский Медицинский Центр', speciality: 'Hospital', country: 'Russia', city: 'Moscow',            notes: 'Premium private hospital | Web: emcmos.ru' },
-  { id: 'dc-manual-invitro-ru',      name: 'Инвитро',               speciality: 'Clinic',       country: 'Russia',      city: 'Moscow',            notes: 'Lab & diagnostics network | Web: invitro.ru' },
+  { id: 'dc-manual-medsi-ru',        name: 'МЕДСИ',                 speciality: 'Clinic',       country: 'Russia',      city: 'Moscow',            isFree: false, cost: 'от 1 500 ₽ / приём',          notes: 'Private multi-specialty clinic chain | Web: medsi.ru' },
+  { id: 'dc-manual-smclinic-ru',     name: 'СМ-Клиника',            speciality: 'Clinic',       country: 'Russia',      city: 'Moscow',            isFree: false, cost: 'от 1 200 ₽ / приём',          notes: 'Private clinic chain | Web: smclinic.ru' },
+  { id: 'dc-manual-emc-ru',          name: 'Европейский Медицинский Центр', speciality: 'Hospital', country: 'Russia', city: 'Moscow',            isFree: false, cost: 'от 3 500 ₽ / консультация',   notes: 'Premium private hospital | Web: emcmos.ru' },
+  { id: 'dc-manual-invitro-ru',      name: 'Инвитро',               speciality: 'Clinic',       country: 'Russia',      city: 'Moscow',            isFree: false, cost: 'от 200 ₽ / анализ',           notes: 'Lab & diagnostics network | Web: invitro.ru' },
   // Russia — online platforms
-  { id: 'dc-online-sberhealth-ru',   name: 'СберЗдоровье',          speciality: 'Clinic',       country: 'Russia',      city: 'Online',            notes: 'Online telemedicine platform | Web: sberzdorovie.ru' },
-  { id: 'dc-online-docdoc-ru',       name: 'DocDoc.ru',             speciality: 'Clinic',       country: 'Russia',      city: 'Online',            notes: 'Doctor search & online appointments | Web: docdoc.ru' },
-  { id: 'dc-online-yandexhealth-ru', name: 'Яндекс Здоровье',       speciality: 'Clinic',       country: 'Russia',      city: 'Online',            notes: 'Online doctor consultations | Web: health.yandex.ru' },
+  { id: 'dc-online-sberhealth-ru',   name: 'СберЗдоровье',          speciality: 'Clinic',       country: 'Russia',      city: 'Online',            isFree: false, cost: 'от 500 ₽ / консультация',     notes: 'Online telemedicine platform | Web: sberzdorovie.ru' },
+  { id: 'dc-online-docdoc-ru',       name: 'DocDoc.ru',             speciality: 'Clinic',       country: 'Russia',      city: 'Online',            isFree: false, cost: 'от 400 ₽ / консультация',     notes: 'Doctor search & online appointments | Web: docdoc.ru' },
+  { id: 'dc-online-yandexhealth-ru', name: 'Яндекс Здоровье',       speciality: 'Clinic',       country: 'Russia',      city: 'Online',            isFree: false, cost: 'от 499 ₽ / консультация',     notes: 'Online doctor consultations | Web: health.yandex.ru' },
   // Turkey — private hospital chains
-  { id: 'dc-manual-acibadem-tr',     name: 'Acıbadem Hospitals',    speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          notes: 'Premium private hospital chain | Web: acibadem.com.tr' },
-  { id: 'dc-manual-memorial-tr',     name: 'Memorial Hospital',     speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          notes: 'Private hospital chain | Web: memorial.com.tr' },
-  { id: 'dc-manual-medicana-tr',     name: 'Medicana Hospitals',    speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          notes: 'Private hospital chain | Web: medicana.com.tr' },
-  { id: 'dc-manual-florence-tr',     name: 'Florence Nightingale',  speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          notes: 'Private hospital | Web: fnhastanesi.com.tr' },
-  { id: 'dc-online-doktita-tr',      name: 'Doktita',               speciality: 'Clinic',       country: 'Turkey',      city: 'Online',            notes: 'Online doctor platform | Web: doktita.com' },
+  { id: 'dc-manual-acibadem-tr',     name: 'Acıbadem Hospitals',    speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          isFree: false, cost: '300–1 500 TRY / consultation', notes: 'Premium private hospital chain | Web: acibadem.com.tr' },
+  { id: 'dc-manual-memorial-tr',     name: 'Memorial Hospital',     speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          isFree: false, cost: '300–1 200 TRY / consultation', notes: 'Private hospital chain | Web: memorial.com.tr' },
+  { id: 'dc-manual-medicana-tr',     name: 'Medicana Hospitals',    speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          isFree: false, cost: '200–1 000 TRY / consultation', notes: 'Private hospital chain | Web: medicana.com.tr' },
+  { id: 'dc-manual-florence-tr',     name: 'Florence Nightingale',  speciality: 'Hospital',     country: 'Turkey',      city: 'Istanbul',          isFree: false, notes: 'Private hospital | Web: fnhastanesi.com.tr' },
+  { id: 'dc-online-doktita-tr',      name: 'Doktita',               speciality: 'Clinic',       country: 'Turkey',      city: 'Online',            isFree: false, cost: '150–500 TRY / görüşme',        notes: 'Online doctor platform | Web: doktita.com' },
   // Germany
-  { id: 'dc-manual-helios-de',       name: 'Helios Kliniken',       speciality: 'Hospital',     country: 'Germany',     city: 'Berlin',            notes: 'Large private hospital chain | Web: helios-gesundheit.de' },
-  { id: 'dc-manual-asklepios-de',    name: 'Asklepios Kliniken',    speciality: 'Hospital',     country: 'Germany',     city: 'Hamburg',           notes: 'Private hospital network | Web: asklepios.com' },
-  { id: 'dc-online-doctolib-de',     name: 'Doctolib Germany',      speciality: 'Clinic',       country: 'Germany',     city: 'Online',            notes: 'Doctor appointment platform | Web: doctolib.de' },
-  { id: 'dc-online-jameda-de',       name: 'Jameda',                speciality: 'Clinic',       country: 'Germany',     city: 'Online',            notes: 'Doctor search & reviews | Web: jameda.de' },
+  { id: 'dc-manual-helios-de',       name: 'Helios Kliniken',       speciality: 'Hospital',     country: 'Germany',     city: 'Berlin',            isFree: false, notes: 'Large private hospital chain | Web: helios-gesundheit.de' },
+  { id: 'dc-manual-asklepios-de',    name: 'Asklepios Kliniken',    speciality: 'Hospital',     country: 'Germany',     city: 'Hamburg',           isFree: false, notes: 'Private hospital network | Web: asklepios.com' },
+  { id: 'dc-online-doctolib-de',     name: 'Doctolib Germany',      speciality: 'Clinic',       country: 'Germany',     city: 'Online',            isFree: false, notes: 'Doctor appointment platform | Web: doctolib.de' },
+  { id: 'dc-online-jameda-de',       name: 'Jameda',                speciality: 'Clinic',       country: 'Germany',     city: 'Online',            isFree: false, notes: 'Doctor search & reviews | Web: jameda.de' },
   // Poland
-  { id: 'dc-manual-lux-pl',          name: 'LUX MED',               speciality: 'Clinic',       country: 'Poland',      city: 'Warsaw',            notes: 'Private healthcare chain | Web: luxmed.pl' },
-  { id: 'dc-manual-medicover-pl',    name: 'Medicover Poland',      speciality: 'Clinic',       country: 'Poland',      city: 'Warsaw',            notes: 'International private clinic | Web: medicover.pl' },
+  { id: 'dc-manual-lux-pl',          name: 'LUX MED',               speciality: 'Clinic',       country: 'Poland',      city: 'Warsaw',            isFree: false, cost: '100–400 PLN / wizyta',         notes: 'Private healthcare chain | Web: luxmed.pl' },
+  { id: 'dc-manual-medicover-pl',    name: 'Medicover Poland',      speciality: 'Clinic',       country: 'Poland',      city: 'Warsaw',            isFree: false, cost: '120–350 PLN / wizyta',         notes: 'International private clinic | Web: medicover.pl' },
   // Spain
-  { id: 'dc-manual-quiron-es',       name: 'Quirónsalud',           speciality: 'Hospital',     country: 'Spain',       city: 'Madrid',            notes: 'Private hospital chain | Web: quironsalud.es' },
-  { id: 'dc-manual-sanitas-es',      name: 'Sanitas',               speciality: 'Clinic',       country: 'Spain',       city: 'Madrid',            notes: 'Private healthcare & insurance | Web: sanitas.es' },
-  { id: 'dc-online-doctolib-es',     name: 'Doctolib Spain',        speciality: 'Clinic',       country: 'Spain',       city: 'Online',            notes: 'Doctor appointment platform | Web: doctolib.es' },
+  { id: 'dc-manual-quiron-es',       name: 'Quirónsalud',           speciality: 'Hospital',     country: 'Spain',       city: 'Madrid',            isFree: false, cost: '60–200 EUR / visita',          notes: 'Private hospital chain | Web: quironsalud.es' },
+  { id: 'dc-manual-sanitas-es',      name: 'Sanitas',               speciality: 'Clinic',       country: 'Spain',       city: 'Madrid',            isFree: false, cost: '50–150 EUR / consulta',        notes: 'Private healthcare & insurance | Web: sanitas.es' },
+  { id: 'dc-online-doctolib-es',     name: 'Doctolib Spain',        speciality: 'Clinic',       country: 'Spain',       city: 'Online',            isFree: false, notes: 'Doctor appointment platform | Web: doctolib.es' },
   // Great Britain
-  { id: 'dc-manual-bupa-gb',         name: 'Bupa Health Clinics',   speciality: 'Clinic',       country: 'Great Britain', city: 'London',          notes: 'Private healthcare chain | Web: bupa.co.uk' },
-  { id: 'dc-manual-nuffield-gb',     name: 'Nuffield Health',       speciality: 'Hospital',     country: 'Great Britain', city: 'London',          notes: 'Private hospital & clinic chain | Web: nuffieldhealth.com' },
-  { id: 'dc-online-pushdoctor-gb',   name: 'Push Doctor',           speciality: 'Clinic',       country: 'Great Britain', city: 'Online',          notes: 'Online GP platform | Web: pushdoctor.co.uk' },
-  { id: 'dc-online-babylon-gb',      name: 'Babylon Health',        speciality: 'Clinic',       country: 'Great Britain', city: 'Online',          notes: 'AI-powered online consultations | Web: babylonhealth.com' },
+  { id: 'dc-manual-bupa-gb',         name: 'Bupa Health Clinics',   speciality: 'Clinic',       country: 'Great Britain', city: 'London',          isFree: false, cost: '£80–250 / consultation',      notes: 'Private healthcare chain | Web: bupa.co.uk' },
+  { id: 'dc-manual-nuffield-gb',     name: 'Nuffield Health',       speciality: 'Hospital',     country: 'Great Britain', city: 'London',          isFree: false, cost: '£100–300 / consultation',     notes: 'Private hospital & clinic chain | Web: nuffieldhealth.com' },
+  { id: 'dc-online-pushdoctor-gb',   name: 'Push Doctor',           speciality: 'Clinic',       country: 'Great Britain', city: 'Online',          isFree: false, cost: '£20–50 / session',            notes: 'Online GP platform | Web: pushdoctor.co.uk' },
+  { id: 'dc-online-babylon-gb',      name: 'Babylon Health',        speciality: 'Clinic',       country: 'Great Britain', city: 'Online',          isFree: false, notes: 'AI-powered online consultations | Web: babylonhealth.com' },
   // USA
-  { id: 'dc-manual-mayo-us',         name: 'Mayo Clinic',           speciality: 'Hospital',     country: 'USA',         city: 'Rochester, MN',     notes: 'World-renowned medical center | Web: mayoclinic.org' },
-  { id: 'dc-manual-clevelandclinic-us', name: 'Cleveland Clinic',   speciality: 'Hospital',     country: 'USA',         city: 'Cleveland, OH',     notes: 'Top-ranked hospital system | Web: clevelandclinic.org' },
-  { id: 'dc-online-teladoc-us',      name: 'Teladoc Health',        speciality: 'Clinic',       country: 'USA',         city: 'Online',            notes: 'Telemedicine platform | Web: teladoc.com' },
-  { id: 'dc-online-zocdoc-us',       name: 'ZocDoc',                speciality: 'Clinic',       country: 'USA',         city: 'Online',            notes: 'Doctor search & booking | Web: zocdoc.com' },
-  { id: 'dc-online-mdlive-us',       name: 'MDLIVE',                speciality: 'Clinic',       country: 'USA',         city: 'Online',            notes: 'Online doctor & therapy | Web: mdlive.com' },
+  { id: 'dc-manual-mayo-us',         name: 'Mayo Clinic',           speciality: 'Hospital',     country: 'USA',         city: 'Rochester, MN',     isFree: false, notes: 'World-renowned medical center | Web: mayoclinic.org' },
+  { id: 'dc-manual-clevelandclinic-us', name: 'Cleveland Clinic',   speciality: 'Hospital',     country: 'USA',         city: 'Cleveland, OH',     isFree: false, notes: 'Top-ranked hospital system | Web: clevelandclinic.org' },
+  { id: 'dc-online-teladoc-us',      name: 'Teladoc Health',        speciality: 'Clinic',       country: 'USA',         city: 'Online',            isFree: false, cost: '$75–299 / visit',             notes: 'Telemedicine platform | Web: teladoc.com' },
+  { id: 'dc-online-zocdoc-us',       name: 'ZocDoc',                speciality: 'Clinic',       country: 'USA',         city: 'Online',            isFree: false, notes: 'Doctor search & booking | Web: zocdoc.com' },
+  { id: 'dc-online-mdlive-us',       name: 'MDLIVE',                speciality: 'Clinic',       country: 'USA',         city: 'Online',            isFree: false, cost: '$82–284 / visit',             notes: 'Online doctor & therapy | Web: mdlive.com' },
   // Psychological help — online platforms (international)
-  { id: 'dc-online-betterhelp',      name: 'BetterHelp',            speciality: 'Psychologist', country: 'International', city: 'Online',          notes: 'Online therapy platform | Web: betterhelp.com' },
-  { id: 'dc-online-talkspace',       name: 'Talkspace',             speciality: 'Psychologist', country: 'International', city: 'Online',          notes: 'Online therapy & psychiatry | Web: talkspace.com' },
-  { id: 'dc-online-iampsycho-ua',    name: 'iAmPsycho',             speciality: 'Psychologist', country: 'Ukraine',     city: 'Online',            notes: 'Ukrainian online psychology platform | Web: iampsycho.ua' },
-  { id: 'dc-online-zigmund-ru',      name: 'Zigmund.Online',        speciality: 'Psychologist', country: 'Russia',      city: 'Online',            notes: 'Online psychotherapy | Web: zigmund.online' },
-  { id: 'dc-online-wunderhood-ru',   name: 'Wunderkind (psych)',    speciality: 'Psychologist', country: 'Russia',      city: 'Online',            notes: 'Child & family psychology online | Web: wunderkind.online' },
+  { id: 'dc-online-betterhelp',      name: 'BetterHelp',            speciality: 'Psychologist', country: 'International', city: 'Online',          isFree: false, cost: '$60–100 / week (subscription)', notes: 'Online therapy platform | Web: betterhelp.com' },
+  { id: 'dc-online-talkspace',       name: 'Talkspace',             speciality: 'Psychologist', country: 'International', city: 'Online',          isFree: false, cost: '$69–109 / week',              notes: 'Online therapy & psychiatry | Web: talkspace.com' },
+  { id: 'dc-online-iampsycho-ua',    name: 'iAmPsycho',             speciality: 'Psychologist', country: 'Ukraine',     city: 'Online',            isFree: false, cost: 'від 800 грн / сесія',         notes: 'Ukrainian online psychology platform | Web: iampsycho.ua' },
+  { id: 'dc-online-zigmund-ru',      name: 'Zigmund.Online',        speciality: 'Psychologist', country: 'Russia',      city: 'Online',            isFree: false, cost: 'от 2 500 ₽ / сессия',         notes: 'Online psychotherapy | Web: zigmund.online' },
+  { id: 'dc-online-wunderhood-ru',   name: 'Wunderkind (psych)',    speciality: 'Psychologist', country: 'Russia',      city: 'Online',            isFree: false, notes: 'Child & family psychology online | Web: wunderkind.online' },
   // Kazakhstan & Central Asia
-  { id: 'dc-manual-oleainvivo-kz',   name: 'Olea InVivo',           speciality: 'Clinic',       country: 'Kazakhstan',  city: 'Almaty',            notes: 'Private multi-specialty clinic | Web: oleainvivo.kz' },
-  { id: 'dc-manual-central-uz',      name: 'Центральная клиника',   speciality: 'Hospital',     country: 'Uzbekistan',  city: 'Tashkent',          notes: 'Central clinical hospital of Tashkent' },
+  { id: 'dc-manual-oleainvivo-kz',   name: 'Olea InVivo',           speciality: 'Clinic',       country: 'Kazakhstan',  city: 'Almaty',            isFree: false, notes: 'Private multi-specialty clinic | Web: oleainvivo.kz' },
+  { id: 'dc-manual-central-uz',      name: 'Центральная клиника',   speciality: 'Hospital',     country: 'Uzbekistan',  city: 'Tashkent',          isFree: false, notes: 'Central clinical hospital of Tashkent' },
 ];
 
 // ─── OSM data types ───────────────────────────────────────────────────────────
@@ -272,7 +271,7 @@ interface OsmElement {
   tags: Record<string, string>;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Tag helpers ──────────────────────────────────────────────────────────────
 
 function getSpeciality(tags: Record<string, string>): string {
   const rawSpec = (tags['healthcare:speciality'] ?? tags['speciality'] ?? '').toLowerCase().trim();
@@ -305,6 +304,32 @@ function getName(tags: Record<string, string>): string | null {
   return tags['name'] ?? tags['name:en'] ?? null;
 }
 
+/**
+ * Returns true if the facility is free, false if paid, null if unknown.
+ * OSM tags: fee=no → free, fee=yes → paid, access=free → free.
+ */
+function getIsFree(tags: Record<string, string>): boolean | null {
+  const fee = (tags['fee'] ?? '').toLowerCase();
+  if (fee === 'no')  return true;   // fee=no means no charge
+  if (fee === 'yes') return false;  // fee=yes means costs money
+  if ((tags['access'] ?? '').toLowerCase() === 'free') return true;
+  return null;
+}
+
+/**
+ * Returns a cost string from OSM charge/price tags, or null if absent.
+ * Common tags: charge="10 EUR", fee:amount="5", healthcare:fee="consult 20 PLN".
+ */
+function getCost(tags: Record<string, string>): string | null {
+  return (
+    tags['charge'] ??
+    tags['fee:amount'] ??
+    tags['healthcare:fee'] ??
+    tags['price'] ??
+    null
+  );
+}
+
 function getNotes(tags: Record<string, string>): string | null {
   const parts: string[] = [];
   if (tags['opening_hours']) parts.push(`Hours: ${tags['opening_hours']}`);
@@ -318,8 +343,6 @@ function getNotes(tags: Record<string, string>): string | null {
 // ─── Overpass query ───────────────────────────────────────────────────────────
 
 async function queryCity(city: City): Promise<OsmElement[]> {
-  // Include all medical facility types: public & private hospitals, clinics,
-  // individual practices, dentists, and any healthcare-tagged place.
   const query = `[out:json][timeout:120];
 (
   node["amenity"~"^(hospital|clinic|doctors|dentist)$"]["name"](${city.bbox});
@@ -339,9 +362,9 @@ out center tags;`;
   return json.elements ?? [];
 }
 
-// ─── DB upsert ────────────────────────────────────────────────────────────────
+// ─── DB upserts ───────────────────────────────────────────────────────────────
 
-async function upsertOsm(city: City, el: OsmElement): Promise<boolean> {
+async function upsertOsm(pool: pg.Pool, city: City, el: OsmElement): Promise<boolean> {
   const tags = el.tags;
   const name = getName(tags);
   if (!name?.trim()) return false;
@@ -352,73 +375,101 @@ async function upsertOsm(city: City, el: OsmElement): Promise<boolean> {
   const cityName   = tags['addr:city'] ?? city.name;
   const country    = tags['addr:country'] ?? city.country;
   const phone      = getPhone(tags);
+  const isFree     = getIsFree(tags);
+  const cost       = getCost(tags);
   const notes      = getNotes(tags);
   const blob       = [name, speciality, cityName, country, address].filter(Boolean).join(' ');
   const now        = new Date().toISOString();
 
   await pool.query(
     `INSERT INTO doctors_catalog
-       (id, name, speciality, phone, address, city, country, notes, contributed_at, search_blob)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       (id, name, speciality, phone, address, city, country, is_free, cost, notes, contributed_at, search_blob)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      ON CONFLICT (id) DO UPDATE SET
        name=$2, speciality=$3, phone=$4, address=$5, city=$6,
-       country=$7, notes=$8, search_blob=$10`,
-    [id, name, speciality, phone, address, cityName, country, notes, now, blob],
+       country=$7, is_free=$8, cost=$9, notes=$10, search_blob=$12`,
+    [id, name, speciality, phone, address, cityName, country, isFree, cost, notes, now, blob],
   );
   return true;
 }
 
-async function upsertManual(entry: ManualEntry): Promise<void> {
+async function upsertManual(pool: pg.Pool, entry: ManualEntry): Promise<void> {
   const blob = [entry.name, entry.speciality, entry.city, entry.country, entry.address]
     .filter(Boolean).join(' ');
   const now = new Date().toISOString();
   await pool.query(
     `INSERT INTO doctors_catalog
-       (id, name, speciality, phone, address, city, country, notes, contributed_at, search_blob)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       (id, name, speciality, phone, address, city, country, is_free, cost, notes, contributed_at, search_blob)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      ON CONFLICT (id) DO UPDATE SET
-       name=$2, speciality=$3, phone=$4, city=$6, country=$7, notes=$8, search_blob=$10`,
-    [entry.id, entry.name, entry.speciality, entry.phone ?? null, entry.address ?? null,
-     entry.city, entry.country, entry.notes ?? null, now, blob],
+       name=$2, speciality=$3, phone=$4, city=$6, country=$7,
+       is_free=$8, cost=$9, notes=$10, search_blob=$12`,
+    [
+      entry.id, entry.name, entry.speciality,
+      entry.phone ?? null, entry.address ?? null,
+      entry.city, entry.country,
+      entry.isFree ?? null, entry.cost ?? null,
+      entry.notes ?? null, now, blob,
+    ],
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  console.log('🏥  MediKit hospital scraper — OpenStreetMap + manual entries\n');
+export interface ScrapeResult { inserted: number; skipped: number; }
 
-  // 1. Manual entries (instant — no network required)
-  console.log(`Seeding ${MANUAL_ENTRIES.length} manual entries (private clinics & online platforms)...`);
+/**
+ * Runs the full scrape (manual entries + OSM). Accepts a pg.Pool so it can be
+ * called from the scheduler without spawning a new process or connection pool.
+ * Safe to await in the Express server — all work is async I/O, non-blocking.
+ */
+export async function runScrape(pool: pg.Pool): Promise<ScrapeResult> {
+  console.log('[scraper] Starting — manual entries + OSM');
+
+  // 1. Manual entries
   for (const entry of MANUAL_ENTRIES) {
-    try { await upsertManual(entry); } catch (e) { console.error(`  ✗ ${entry.name}:`, e); }
+    try { await upsertManual(pool, entry); }
+    catch (e) { console.error(`  [scraper] ✗ ${entry.name}:`, e); }
   }
-  console.log('  ✓ Manual entries done.\n');
+  console.log(`[scraper] Manual entries: ${MANUAL_ENTRIES.length} seeded`);
 
-  // 2. OSM scrape by city
-  let totalInserted = 0, totalSkipped = 0;
+  // 2. OSM per city
+  let inserted = 0, skipped = 0;
   for (const city of CITIES) {
     try {
-      process.stdout.write(`[OSM] ${city.name}, ${city.country} ... `);
+      process.stdout.write(`[scraper] ${city.name}, ${city.country} ... `);
       const elements = await queryCity(city);
       process.stdout.write(`${elements.length} found → `);
 
       let saved = 0;
       for (const el of elements) {
         try {
-          if (await upsertOsm(city, el)) { saved++; totalInserted++; } else totalSkipped++;
-        } catch { totalSkipped++; }
+          if (await upsertOsm(pool, city, el)) { saved++; inserted++; } else skipped++;
+        } catch { skipped++; }
       }
       console.log(`${saved} saved`);
 
       await new Promise(r => setTimeout(r, 1500)); // Overpass rate limit
     } catch (err) {
-      console.error(`  ✗ ${(err as Error).message}`);
+      console.error(`[scraper] ✗ ${(err as Error).message}`);
     }
   }
 
-  console.log(`\n✅  Done!  OSM saved: ${totalInserted}, skipped: ${totalSkipped}`);
-  await pool.end();
+  console.log(`[scraper] Done. OSM inserted: ${inserted}, skipped: ${skipped}`);
+  return { inserted, skipped };
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+// ─── CLI entry-point ──────────────────────────────────────────────────────────
+
+if (process.argv[1]?.endsWith('scrapeHospitals.ts') ||
+    process.argv[1]?.endsWith('scrapeHospitals.js')) {
+  const DB_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/medikit';
+  const cliPool = new pg.Pool({ connectionString: DB_URL });
+  console.log('🏥  MediKit hospital scraper — OpenStreetMap + manual entries\n');
+  runScrape(cliPool)
+    .then(r => {
+      console.log(`\n✅  Total OSM saved: ${r.inserted}, skipped: ${r.skipped}`);
+      return cliPool.end();
+    })
+    .catch(err => { console.error(err); process.exit(1); });
+}

@@ -19,6 +19,7 @@ import { medicinesRouter } from './routes/medicines.js';
 import { kitMedicinesRouter } from './routes/kitMedicines.js';
 import { doctorsRouter } from './routes/doctors.js';
 import { appointmentsRouter } from './routes/appointments.js';
+import { startScrapeScheduler } from './scrapeScheduler.js';
 
 const app = express();
 app.use(helmet());
@@ -67,6 +68,7 @@ attachRealtime(server);
 async function main(): Promise<void> {
   await initDb();
   await seedMedicinesCatalog();
+  startScrapeScheduler();
   server.listen(config.port, () => {
     console.log(`MediKit server listening on http://0.0.0.0:${config.port}`);
     console.log(`WebSocket:  ws://0.0.0.0:${config.port}/ws  (auth via first-message frame)`);

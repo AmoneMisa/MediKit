@@ -370,14 +370,27 @@ async function queryCity(city: City): Promise<OsmElement[]> {
 );
 out center tags;`;
 
-  const resp = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `data=${encodeURIComponent(query)}`,
-  });
-  if (!resp.ok) throw new Error(`Overpass HTTP ${resp.status}`);
-  const json = await resp.json() as { elements?: OsmElement[] };
-  return json.elements ?? [];
+  const delays = [60_000, 120_000]; // wait 60s then 120s on 429
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const resp = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `data=${encodeURIComponent(query)}`,
+    });
+    if (resp.status === 429) {
+      if (attempt < delays.length) {
+        const wait = delays[attempt];
+        console.log(`[scraper] 429 rate limit — waiting ${wait / 1000}s before retry…`);
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+      throw new Error('Overpass HTTP 429 (rate limited, giving up)');
+    }
+    if (!resp.ok) throw new Error(`Overpass HTTP ${resp.status}`);
+    const json = await resp.json() as { elements?: OsmElement[] };
+    return json.elements ?? [];
+  }
+  return [];
 }
 
 // ─── DB upserts ───────────────────────────────────────────────────────────────
@@ -472,7 +485,7 @@ export async function runScrape(pool: pg.Pool): Promise<ScrapeResult> {
       }
       console.log(`${saved} saved`);
 
-      await new Promise(r => setTimeout(r, 1500)); // Overpass rate limit
+      await new Promise(r => setTimeout(r, 10_000)); // Overpass rate limit — 10s between cities
     } catch (err) {
       console.error(`[scraper] ✗ ${(err as Error).message}`);
     }

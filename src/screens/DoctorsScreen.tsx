@@ -36,6 +36,32 @@ const ALL_SPECIALITIES = [
   'Hospital', 'Clinic', 'Other',
 ];
 
+/** Maps English DB value → i18n translation key. Falls back to the English name. */
+const SPEC_KEY: Record<string, string> = {
+  'Allergist': 'spec_allergist', 'Anesthesiologist': 'spec_anesthesiologist',
+  'Cardiologist': 'spec_cardiologist', 'Dentist': 'spec_dentist',
+  'Dermatologist': 'spec_dermatologist', 'Dietitian': 'spec_dietitian',
+  'Emergency Medicine': 'spec_emergency_medicine', 'ENT': 'spec_ent',
+  'Endocrinologist': 'spec_endocrinologist', 'Family Medicine': 'spec_family_medicine',
+  'Gastroenterologist': 'spec_gastroenterologist', 'Gynecologist': 'spec_gynecologist',
+  'Hematologist': 'spec_hematologist', 'Hepatologist': 'spec_hepatologist',
+  'Immunologist': 'spec_immunologist', 'Infectologist': 'spec_infectologist',
+  'Nephrologist': 'spec_nephrologist', 'Neurologist': 'spec_neurologist',
+  'Oncologist': 'spec_oncologist', 'Ophthalmologist': 'spec_ophthalmologist',
+  'Orthopedist': 'spec_orthopedist', 'Pediatrician': 'spec_pediatrician',
+  'Physiotherapist': 'spec_physiotherapist', 'Psychiatrist': 'spec_psychiatrist',
+  'Psychologist': 'spec_psychologist', 'Pulmonologist': 'spec_pulmonologist',
+  'Radiologist': 'spec_radiologist', 'Rheumatologist': 'spec_rheumatologist',
+  'Surgeon': 'spec_surgeon', 'Therapist': 'spec_therapist',
+  'Urologist': 'spec_urologist', 'Hospital': 'spec_hospital',
+  'Clinic': 'spec_clinic', 'Other': 'spec_other',
+};
+
+function specLabel(t: ReturnType<typeof useT>, spec: string): string {
+  const key = SPEC_KEY[spec];
+  return key ? (t as any)(key) || spec : spec;
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 function makeStyles(C: ColorPalette) {
@@ -210,11 +236,11 @@ function SpecialityPickerModal({ visible, value, onSelect, onClose, includeAll =
           keyExtractor={s => s || '__all__'}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
-            const label = item === '' ? t('doc_filter_all') : item;
+            const label = item === '' ? t('doc_filter_all') : specLabel(t, item);
             const active = value === item;
             return (
               <TouchableOpacity
-                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.borderLight }}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.borderLight }}
                 onPress={() => { onSelect(item); setSearch(''); onClose(); }}
                 activeOpacity={0.7}
               >
@@ -276,7 +302,7 @@ function DoctorCard({
         <DoctorAvatar doctor={doctor} />
         <View style={s.cardBody}>
           <Text style={s.cardName}>{doctor.name}</Text>
-          <Text style={s.cardSpec}>{doctor.speciality}{doctor.experienceYears ? `  ·  ${t('doc_experience_years').replace('{n}', String(doctor.experienceYears))}` : ''}</Text>
+          <Text style={s.cardSpec}>{specLabel(t, doctor.speciality)}{doctor.experienceYears ? `  ·  ${t('doc_experience_years').replace('{n}', String(doctor.experienceYears))}` : ''}</Text>
           {contactLine ? <Text style={s.cardSub}>{contactLine}</Text> : null}
           {doctor.phone ? (
             <View style={s.cardRow}>
@@ -471,7 +497,7 @@ export function DoctorsListScreen() {
             style={[s.chip, filterSpec === spec && s.chipActive]}
             activeOpacity={0.8}
           >
-            <Text style={[s.chipText, filterSpec === spec && s.chipTextA]}>{spec}</Text>
+            <Text style={[s.chipText, filterSpec === spec && s.chipTextA]}>{specLabel(t, spec)}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -662,7 +688,7 @@ export function DoctorFormScreen() {
           >
             <Icon name="stethoscope" size={18} color={C.textSecondary} style={{ marginRight: Spacing.sm }} />
             <Text style={{ flex: 1, fontSize: Typography.size.md, color: speciality ? C.textPrimary : C.textTertiary }}>
-              {speciality || t('doc_spec_select')}
+              {speciality ? specLabel(t, speciality) : t('doc_spec_select')}
             </Text>
             <Icon name="chevron-right" size={20} color={C.textTertiary} />
           </TouchableOpacity>
@@ -911,26 +937,23 @@ export function DoctorCatalogScreen() {
 
   const [query,      setQuery]      = useState('');
   const [filterSpec, setFilterSpec] = useState<string | null>(null);
+  const [filterCity, setFilterCity] = useState('');
   const [results,    setResults]    = useState<CatalogDoctor[]>([]);
   const [loading,    setLoading]    = useState(false);
-  const [searched,   setSearched]   = useState(false);
   const [addedIds,        setAddedIds]        = useState<Set<string>>(new Set());
   const [specModalVisible, setSpecModalVisible] = useState(false);
 
-  async function doSearch() {
+  const doSearch = useCallback(async (q = query, spec = filterSpec, city = filterCity) => {
     setLoading(true);
-    setSearched(true);
     try {
-      const res = await searchDoctorsCatalog(query, filterSpec ?? undefined);
+      const res = await searchDoctorsCatalog(q, spec ?? undefined, city || undefined);
       setResults(res);
     } catch { setResults([]); }
     setLoading(false);
-  }
+  }, [query, filterSpec, filterCity]);
 
-  // Auto-search when speciality filter changes (if already searched once)
-  useEffect(() => {
-    if (searched) doSearch();
-  }, [filterSpec]);
+  // Auto-load on mount and when filters change
+  useEffect(() => { void doSearch(); }, [filterSpec, filterCity]);
 
   function handleAdd(doc: CatalogDoctor) {
     const now = new Date().toISOString();
@@ -971,24 +994,35 @@ export function DoctorCatalogScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Speciality filter button */}
-      <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm, flexDirection: 'row', gap: Spacing.sm }}>
+      {/* Filters row: speciality + city */}
+      <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm, flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' }}>
         <TouchableOpacity
-          style={[s.chip, !!filterSpec && s.chipActive]}
+          style={[s.chip, !!filterSpec && s.chipActive, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}
           onPress={() => setSpecModalVisible(true)}
           activeOpacity={0.8}
         >
-          <Icon name="filter-variant" size={14} color={filterSpec ? '#fff' : C.textSecondary} />
+          <Icon name="stethoscope" size={13} color={filterSpec ? '#fff' : C.textSecondary} />
           <Text style={[s.chipText, !!filterSpec && s.chipTextA]}>
-            {filterSpec || t('doc_filter_all')}
+            {filterSpec ? specLabel(t, filterSpec) : t('doc_filter_all')}
           </Text>
+          {filterSpec
+            ? <TouchableOpacity hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setFilterSpec(null)}><Icon name="close" size={12} color="#fff" /></TouchableOpacity>
+            : null}
         </TouchableOpacity>
-        {filterSpec && (
-          <TouchableOpacity style={s.chip} onPress={() => setFilterSpec(null)} activeOpacity={0.8}>
-            <Icon name="close" size={14} color={C.textSecondary} />
-            <Text style={s.chipText}>{t('doc_filter_all')}</Text>
-          </TouchableOpacity>
-        )}
+
+        <View style={[s.searchWrap, { flex: 1, marginHorizontal: 0, marginBottom: 0 }]}>
+          <Icon name="map-marker-outline" size={15} color={C.textTertiary} />
+          <TextInput
+            style={[s.searchInput, { height: 36 }]}
+            placeholder={t('doc_city_filter_ph')}
+            placeholderTextColor={C.textTertiary}
+            value={filterCity}
+            onChangeText={setFilterCity}
+            returnKeyType="search"
+            onSubmitEditing={() => doSearch()}
+          />
+          {filterCity ? <TouchableOpacity onPress={() => setFilterCity('')}><Icon name="close" size={15} color={C.textTertiary} /></TouchableOpacity> : null}
+        </View>
       </View>
       <SpecialityPickerModal
         visible={specModalVisible}
@@ -1001,12 +1035,6 @@ export function DoctorCatalogScreen() {
       {/* Content */}
       {loading ? (
         <View style={s.emptyWrap}><ActivityIndicator color={C.blue} size="large" /></View>
-      ) : !searched ? (
-        <View style={s.emptyWrap}>
-          <Icon name="earth" size={54} color={C.textTertiary} />
-          <Text style={s.emptyText}>{t('doc_catalog_title')}</Text>
-          <Text style={s.emptySub}>{t('doc_catalog_search_ph')}</Text>
-        </View>
       ) : results.length === 0 ? (
         <View style={s.emptyWrap}>
           <Icon name="doctor" size={54} color={C.textTertiary} />
@@ -1031,7 +1059,7 @@ export function DoctorCatalogScreen() {
                   }
                   <View style={s.cardBody}>
                     <Text style={s.cardName}>{item.name}</Text>
-                    <Text style={s.cardSpec}>{item.speciality}{item.experienceYears ? `  ·  ${t('doc_experience_years').replace('{n}', String(item.experienceYears))}` : ''}</Text>
+                    <Text style={s.cardSpec}>{specLabel(t, item.speciality)}{item.experienceYears ? `  ·  ${t('doc_experience_years').replace('{n}', String(item.experienceYears))}` : ''}</Text>
                     {contactLine ? <Text style={s.cardSub}>{contactLine}</Text> : null}
                     {item.isFree !== undefined && (
                       <View style={[s.freeBadge, item.isFree ? {} : s.payBadge]}>

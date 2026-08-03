@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, Alert, Image, Share, ActivityIndicator,
   KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppStore } from '../store';
@@ -364,6 +365,7 @@ export function DoctorsListScreen() {
   const C = useColors();
   const t = useT();
   const s = useMemo(() => makeStyles(C), [C]);
+  const insets = useSafeAreaInsets();
 
   const doctors      = useAppStore(state => state.doctors);
   const deleteDoctor = useAppStore(state => state.deleteDoctor);
@@ -445,7 +447,7 @@ export function DoctorsListScreen() {
   return (
     <SafeAreaView style={s.root}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: insets.top + Spacing.sm }]}>
         <Text style={s.title}>{t('doc_title')}</Text>
         <TouchableOpacity
           onPress={() => navigation.navigate('DoctorCatalog')}
@@ -931,6 +933,7 @@ export function DoctorCatalogScreen() {
   const C = useColors();
   const t = useT();
   const s = useMemo(() => makeStyles(C), [C]);
+  const insets = useSafeAreaInsets();
 
   const myDoctors  = useAppStore(st => st.doctors);
   const addDoctor  = useAppStore(st => st.addDoctor);
@@ -976,7 +979,7 @@ export function DoctorCatalogScreen() {
   return (
     <SafeAreaView style={s.root}>
       {/* Search bar */}
-      <View style={[s.searchWrap, { marginTop: Spacing.md }]}>
+      <View style={[s.searchWrap, { marginTop: insets.top + Spacing.sm }]}>
         <Icon name="earth" size={20} color={C.textTertiary} />
         <TextInput
           style={s.searchInput}

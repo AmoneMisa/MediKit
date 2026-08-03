@@ -28,6 +28,50 @@ async function pickMirror(): Promise<void> {
   console.warn('[scraper] No Overpass mirror reachable — OSM data will be skipped.');
 }
 
+// ─── City name aliases (English → Cyrillic/local) added to search_blob ───────
+
+const CITY_ALIASES: Record<string, string> = {
+  'Kyiv': 'Киев Київ',
+  'Kharkiv': 'Харьков Харків',
+  'Odesa': 'Одесса Одеса',
+  'Dnipro': 'Днепр Дніпро',
+  'Lviv': 'Львов Львів',
+  'Zaporizhzhia': 'Запорожье Запоріжжя',
+  'Vinnytsia': 'Винница Вінниця',
+  'Poltava': 'Полтава',
+  'Moscow': 'Москва',
+  'Saint Petersburg': 'Санкт-Петербург Питер',
+  'Yekaterinburg': 'Екатеринбург',
+  'Novosibirsk': 'Новосибирск',
+  'Kazan': 'Казань',
+  'Krasnodar': 'Краснодар',
+  'Samara': 'Самара',
+  'Istanbul': 'Стамбул İstanbul',
+  'Ankara': 'Анкара',
+  'Izmir': 'Измир İzmir',
+  'Antalya': 'Анталья',
+  'Bucharest': 'Бухарест București',
+  'Cluj-Napoca': 'Клуж',
+  'Chișinău': 'Кишинев',
+  'Tashkent': 'Ташкент',
+  'Almaty': 'Алматы Алма-Ата',
+  'Astana': 'Астана',
+  'Bishkek': 'Бишкек',
+  'Tbilisi': 'Тбилиси',
+  'Sofia': 'София',
+  'Belgrade': 'Белград Beograd',
+  'Warsaw': 'Варшава Warszawa',
+  'Berlin': 'Берлин',
+  'Munich': 'Мюнхен München',
+  'London': 'Лондон',
+  'Madrid': 'Мадрид',
+  'Barcelona': 'Барселона',
+};
+
+function cityAliases(cityName: string): string {
+  return CITY_ALIASES[cityName] ?? '';
+}
+
 // ─── OSM speciality → our display name ───────────────────────────────────────
 
 const OSM_TO_SPECIALITY: Record<string, string> = {
@@ -409,7 +453,7 @@ async function upsertOsm(pool: pg.Pool, city: City, el: OsmElement): Promise<boo
   const isFree     = getIsFree(tags);
   const cost       = getCost(tags);
   const notes      = getNotes(tags);
-  const blob       = [name, speciality, cityName, country, address].filter(Boolean).join(' ');
+  const blob       = [name, speciality, cityName, country, address, cityAliases(cityName)].filter(Boolean).join(' ');
   const now        = new Date().toISOString();
 
   await pool.query(
@@ -425,7 +469,7 @@ async function upsertOsm(pool: pg.Pool, city: City, el: OsmElement): Promise<boo
 }
 
 async function upsertManual(pool: pg.Pool, entry: ManualEntry): Promise<void> {
-  const blob = [entry.name, entry.speciality, entry.city, entry.country, entry.address]
+  const blob = [entry.name, entry.speciality, entry.city, entry.country, entry.address, cityAliases(entry.city)]
     .filter(Boolean).join(' ');
   const now = new Date().toISOString();
   await pool.query(

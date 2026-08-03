@@ -48,7 +48,7 @@ doctorsRouter.get('/catalog', async (_req: AuthedRequest, res, next) => {
     const params: unknown[] = [term];
     let sql = 'SELECT * FROM doctors_catalog WHERE search_blob ILIKE $1';
     if (speciality) { params.push(speciality); sql += ` AND speciality = $${params.length}`; }
-    if (city) { params.push(`%${city}%`); sql += ` AND city ILIKE $${params.length}`; }
+    if (city) { params.push(`%${city}%`); sql += ` AND (city ILIKE $${params.length} OR search_blob ILIKE $${params.length})`; }
     sql += ' ORDER BY name ASC LIMIT 50';
     const rows = await q<CatalogRow>(sql, params);
     res.json({ doctors: rows.map(toCatalog) });

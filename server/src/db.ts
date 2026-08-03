@@ -161,6 +161,9 @@ export async function initDb(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google ON users(google_id) WHERE google_id IS NOT NULL;
 
     ALTER TABLE kit_medicines ADD COLUMN IF NOT EXISTS color_tag TEXT;
+    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS experience_years INTEGER;
+    ALTER TABLE doctors_catalog ADD COLUMN IF NOT EXISTS experience_years INTEGER;
+    ALTER TABLE doctors_catalog ADD COLUMN IF NOT EXISTS photo_uri TEXT;
 
     CREATE INDEX IF NOT EXISTS idx_members_user  ON kit_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_activity_kit  ON activity(kit_id, created_at);

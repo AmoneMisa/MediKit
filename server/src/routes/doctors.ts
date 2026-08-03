@@ -15,25 +15,28 @@ interface CatalogRow {
   languages: string[] | null;
   is_free: boolean | null; cost: string | null;
   whatsapp: string | null; telegram: string | null; viber: string | null;
+  photo_uri: string | null; experience_years: number | null;
   notes: string | null; contributed_at: string;
 }
 
 function toCatalog(r: CatalogRow) {
   return {
     id: r.id, name: r.name, speciality: r.speciality,
-    phone:     r.phone     ?? undefined,
-    email:     r.email     ?? undefined,
-    address:   r.address   ?? undefined,
-    city:      r.city      ?? undefined,
-    country:   r.country   ?? undefined,
-    languages: r.languages ?? undefined,
-    isFree:    r.is_free   ?? undefined,
-    cost:      r.cost      ?? undefined,
-    whatsapp:  r.whatsapp  ?? undefined,
-    telegram:  r.telegram  ?? undefined,
-    viber:     r.viber     ?? undefined,
-    notes:     r.notes     ?? undefined,
-    contributedAt: r.contributed_at,
+    phone:           r.phone           ?? undefined,
+    email:           r.email           ?? undefined,
+    address:         r.address         ?? undefined,
+    city:            r.city            ?? undefined,
+    country:         r.country         ?? undefined,
+    languages:       r.languages       ?? undefined,
+    isFree:          r.is_free         ?? undefined,
+    cost:            r.cost            ?? undefined,
+    whatsapp:        r.whatsapp        ?? undefined,
+    telegram:        r.telegram        ?? undefined,
+    viber:           r.viber           ?? undefined,
+    photoUri:        r.photo_uri       ?? undefined,
+    experienceYears: r.experience_years ?? undefined,
+    notes:           r.notes           ?? undefined,
+    contributedAt:   r.contributed_at,
   };
 }
 
@@ -67,9 +70,10 @@ doctorsRouter.post('/catalog', async (req: AuthedRequest, res, next) => {
     await exec(`
       INSERT INTO doctors_catalog (
         id, name, speciality, phone, email, address, city, country,
-        languages, is_free, cost, whatsapp, telegram, viber, notes,
+        languages, is_free, cost, whatsapp, telegram, viber,
+        photo_uri, experience_years, notes,
         contributed_by, contributed_at, search_blob
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       ON CONFLICT (id) DO NOTHING
     `, [
       catalogId, b.name, b.speciality,
@@ -78,6 +82,8 @@ doctorsRouter.post('/catalog', async (req: AuthedRequest, res, next) => {
       b.languages ? JSON.stringify(b.languages) : null,
       b.isFree ?? null, b.cost ?? null,
       b.whatsapp ?? null, b.telegram ?? null, b.viber ?? null,
+      b.photoUri ?? null,
+      b.experienceYears != null ? Number(b.experienceYears) : null,
       b.notes ?? null,
       req.user!.id, now, blob,
     ]);
@@ -95,7 +101,7 @@ interface DoctorRow {
   languages: string[] | null;
   is_free: boolean | null; cost: string | null;
   whatsapp: string | null; telegram: string | null; viber: string | null;
-  photo_uri: string | null; notes: string | null;
+  photo_uri: string | null; experience_years: number | null; notes: string | null;
   created_at: string; updated_at: string;
 }
 
@@ -104,21 +110,22 @@ function toDoctor(r: DoctorRow) {
     id: r.id,
     name: r.name,
     speciality: r.speciality,
-    phone:     r.phone     ?? undefined,
-    email:     r.email     ?? undefined,
-    address:   r.address   ?? undefined,
-    city:      r.city      ?? undefined,
-    country:   r.country   ?? undefined,
-    languages: r.languages  ?? undefined,
-    isFree:    r.is_free   ?? undefined,
-    cost:      r.cost      ?? undefined,
-    whatsapp:  r.whatsapp  ?? undefined,
-    telegram:  r.telegram  ?? undefined,
-    viber:     r.viber     ?? undefined,
-    photoUri:  r.photo_uri ?? undefined,
-    notes:     r.notes     ?? undefined,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    phone:           r.phone            ?? undefined,
+    email:           r.email            ?? undefined,
+    address:         r.address          ?? undefined,
+    city:            r.city             ?? undefined,
+    country:         r.country          ?? undefined,
+    languages:       r.languages        ?? undefined,
+    isFree:          r.is_free          ?? undefined,
+    cost:            r.cost             ?? undefined,
+    whatsapp:        r.whatsapp         ?? undefined,
+    telegram:        r.telegram         ?? undefined,
+    viber:           r.viber            ?? undefined,
+    photoUri:        r.photo_uri        ?? undefined,
+    experienceYears: r.experience_years ?? undefined,
+    notes:           r.notes            ?? undefined,
+    createdAt:       r.created_at,
+    updatedAt:       r.updated_at,
   };
 }
 
@@ -148,13 +155,13 @@ doctorsRouter.post('/', async (req: AuthedRequest, res, next) => {
     await exec(`
       INSERT INTO doctors (
         id, user_id, name, speciality, phone, email, address, city, country,
-        languages, is_free, cost, whatsapp, telegram, viber, photo_uri, notes,
+        languages, is_free, cost, whatsapp, telegram, viber, photo_uri, experience_years, notes,
         created_at, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       ON CONFLICT (id) DO UPDATE SET
         name=$3, speciality=$4, phone=$5, email=$6, address=$7, city=$8, country=$9,
         languages=$10, is_free=$11, cost=$12, whatsapp=$13, telegram=$14, viber=$15,
-        photo_uri=$16, notes=$17, updated_at=$19
+        photo_uri=$16, experience_years=$17, notes=$18, updated_at=$20
     `, [
       id, req.user!.id,
       b.name, b.speciality,
@@ -163,7 +170,9 @@ doctorsRouter.post('/', async (req: AuthedRequest, res, next) => {
       b.languages ? JSON.stringify(b.languages) : null,
       b.isFree   ?? null, b.cost    ?? null,
       b.whatsapp ?? null, b.telegram ?? null, b.viber ?? null,
-      b.photoUri ?? null, b.notes   ?? null,
+      b.photoUri ?? null,
+      b.experienceYears != null ? Number(b.experienceYears) : null,
+      b.notes   ?? null,
       b.createdAt ?? now, b.updatedAt ?? now,
     ]);
 
@@ -191,8 +200,8 @@ doctorsRouter.patch('/:id', async (req: AuthedRequest, res, next) => {
       UPDATE doctors SET
         name=$1, speciality=$2, phone=$3, email=$4, address=$5, city=$6, country=$7,
         languages=$8, is_free=$9, cost=$10, whatsapp=$11, telegram=$12, viber=$13,
-        photo_uri=$14, notes=$15, updated_at=$16
-      WHERE id=$17 AND user_id=$18
+        photo_uri=$14, experience_years=$15, notes=$16, updated_at=$17
+      WHERE id=$18 AND user_id=$19
     `, [
       b.name       ?? existing.name,
       b.speciality ?? existing.speciality,
@@ -208,6 +217,9 @@ doctorsRouter.patch('/:id', async (req: AuthedRequest, res, next) => {
       b.telegram !== undefined ? b.telegram : existing.telegram,
       b.viber    !== undefined ? b.viber    : existing.viber,
       b.photoUri !== undefined ? b.photoUri : existing.photo_uri,
+      b.experienceYears !== undefined
+        ? (b.experienceYears != null ? Number(b.experienceYears) : null)
+        : existing.experience_years,
       b.notes    !== undefined ? b.notes    : existing.notes,
       b.updatedAt ?? now,
       id, req.user!.id,

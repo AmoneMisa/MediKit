@@ -164,6 +164,7 @@ export interface Doctor {
   telegram?: string;
   viber?: string;
   photoUri?: string;
+  experienceYears?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -184,6 +185,8 @@ export interface CatalogDoctor {
   whatsapp?: string;
   telegram?: string;
   viber?: string;
+  photoUri?: string;
+  experienceYears?: number;
   notes?: string;
   contributedAt: string;
 }
@@ -345,6 +348,7 @@ export type ProfileStackParamList = {
   MedicineDetail: { medicineId: string; kitId: string };
   Doctors: undefined;
   DoctorForm: { doctorId?: string };
+  DoctorCatalog: undefined;
   Appointments: { doctorId: string };
   AnalysesArchive: undefined;
 };

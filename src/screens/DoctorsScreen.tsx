@@ -276,7 +276,7 @@ function DoctorCard({
         <DoctorAvatar doctor={doctor} />
         <View style={s.cardBody}>
           <Text style={s.cardName}>{doctor.name}</Text>
-          <Text style={s.cardSpec}>{doctor.speciality}</Text>
+          <Text style={s.cardSpec}>{doctor.speciality}{doctor.experienceYears ? `  ·  ${t('doc_experience_years').replace('{n}', String(doctor.experienceYears))}` : ''}</Text>
           {contactLine ? <Text style={s.cardSub}>{contactLine}</Text> : null}
           {doctor.phone ? (
             <View style={s.cardRow}>
@@ -547,13 +547,14 @@ export function DoctorFormScreen() {
   const [city,       setCity]       = useState(existing?.city ?? '');
   const [country,    setCountry]    = useState(existing?.country ?? '');
   const [languages,  setLanguages]  = useState<string[]>(existing?.languages ?? []);
-  const [isFree,     setIsFree]     = useState<boolean | undefined>(existing?.isFree);
-  const [cost,       setCost]       = useState(existing?.cost ?? '');
-  const [whatsapp,   setWhatsapp]   = useState(existing?.whatsapp ?? '');
-  const [telegram,   setTelegram]   = useState(existing?.telegram ?? '');
-  const [viber,      setViber]      = useState(existing?.viber ?? '');
-  const [notes,      setNotes]      = useState(existing?.notes ?? '');
-  const [photoUri,   setPhotoUri]   = useState(existing?.photoUri ?? '');
+  const [isFree,          setIsFree]          = useState<boolean | undefined>(existing?.isFree);
+  const [cost,            setCost]            = useState(existing?.cost ?? '');
+  const [whatsapp,        setWhatsapp]        = useState(existing?.whatsapp ?? '');
+  const [telegram,        setTelegram]        = useState(existing?.telegram ?? '');
+  const [viber,           setViber]           = useState(existing?.viber ?? '');
+  const [experienceYears, setExperienceYears] = useState(existing?.experienceYears?.toString() ?? '');
+  const [notes,           setNotes]           = useState(existing?.notes ?? '');
+  const [photoUri,        setPhotoUri]        = useState(existing?.photoUri ?? '');
 
   const [langInput,  setLangInput]  = useState('');
   const [specModalVisible, setSpecModalVisible] = useState(false);
@@ -579,22 +580,24 @@ export function DoctorFormScreen() {
     if (!speciality)  { Alert.alert(t('doc_spec_required')); return; }
 
     const now = new Date().toISOString();
+    const expNum = parseInt(experienceYears, 10);
     const data: Omit<Doctor, 'id' | 'createdAt' | 'updatedAt'> = {
       name: name.trim(),
       speciality,
-      phone:    phone.trim() || undefined,
-      email:    email.trim() || undefined,
-      address:  address.trim() || undefined,
-      city:     city.trim() || undefined,
-      country:  country.trim() || undefined,
-      languages: languages.length > 0 ? languages : undefined,
+      phone:           phone.trim() || undefined,
+      email:           email.trim() || undefined,
+      address:         address.trim() || undefined,
+      city:            city.trim() || undefined,
+      country:         country.trim() || undefined,
+      languages:       languages.length > 0 ? languages : undefined,
       isFree,
-      cost:     cost.trim() || undefined,
-      whatsapp: whatsapp.trim() || undefined,
-      telegram: telegram.trim() || undefined,
-      viber:    viber.trim() || undefined,
-      notes:    notes.trim() || undefined,
-      photoUri: photoUri || undefined,
+      cost:            cost.trim() || undefined,
+      whatsapp:        whatsapp.trim() || undefined,
+      telegram:        telegram.trim() || undefined,
+      viber:           viber.trim() || undefined,
+      experienceYears: !isNaN(expNum) && expNum > 0 ? expNum : undefined,
+      notes:           notes.trim() || undefined,
+      photoUri:        photoUri || undefined,
     };
 
     if (existing && doctorId) {
@@ -669,6 +672,21 @@ export function DoctorFormScreen() {
             onSelect={setSpeciality}
             onClose={() => setSpecModalVisible(false)}
           />
+
+          {/* Experience */}
+          <Text style={s.sec}>{t('doc_experience_label')}</Text>
+          <View style={s.formCard}>
+            <View style={{ padding: Spacing.md }}>
+              <FormField
+                label={t('doc_experience_label')}
+                value={experienceYears}
+                onChangeText={v => setExperienceYears(v.replace(/[^0-9]/g, ''))}
+                placeholder={t('doc_experience_ph')}
+                keyboardType="numeric"
+                s={s} C={C}
+              />
+            </View>
+          </View>
 
           {/* Contact */}
           <Text style={s.sec}>{t('doc_contact')}</Text>
@@ -851,6 +869,7 @@ function ContributeButton({ doctor }: { doctor: Doctor }) {
                 address: doctor.address, city: doctor.city, country: doctor.country,
                 languages: doctor.languages, isFree: doctor.isFree, cost: doctor.cost,
                 whatsapp: doctor.whatsapp, telegram: doctor.telegram, viber: doctor.viber,
+                photoUri: doctor.photoUri, experienceYears: doctor.experienceYears,
                 notes: doctor.notes,
               });
               setDone(true);
@@ -922,6 +941,7 @@ export function DoctorCatalogScreen() {
       address: doc.address, city: doc.city, country: doc.country,
       languages: doc.languages, isFree: doc.isFree, cost: doc.cost,
       whatsapp: doc.whatsapp, telegram: doc.telegram, viber: doc.viber,
+      photoUri: doc.photoUri, experienceYears: doc.experienceYears,
       notes: doc.notes,
       createdAt: now, updatedAt: now,
     });
@@ -1001,15 +1021,17 @@ export function DoctorCatalogScreen() {
           renderItem={({ item }) => {
             const alreadyAdded = addedIds.has(item.id) || myNames.has(item.name.toLowerCase());
             const contactLine = [item.city, item.country].filter(Boolean).join(', ');
+            const initials = item.name.trim().split(/\s+/).map((w: string) => w[0]?.toUpperCase() ?? '').join('').slice(0, 2);
             return (
               <View style={s.card}>
                 <View style={s.cardInner}>
-                  <View style={s.avatar}>
-                    <Text style={s.avatarText}>{item.name.trim().split(/\s+/).map((w: string) => w[0]?.toUpperCase() ?? '').join('').slice(0, 2)}</Text>
-                  </View>
+                  {item.photoUri
+                    ? <Image source={{ uri: item.photoUri }} style={s.avatarPhoto} />
+                    : <View style={s.avatar}><Text style={s.avatarText}>{initials}</Text></View>
+                  }
                   <View style={s.cardBody}>
                     <Text style={s.cardName}>{item.name}</Text>
-                    <Text style={s.cardSpec}>{item.speciality}</Text>
+                    <Text style={s.cardSpec}>{item.speciality}{item.experienceYears ? `  ·  ${t('doc_experience_years').replace('{n}', String(item.experienceYears))}` : ''}</Text>
                     {contactLine ? <Text style={s.cardSub}>{contactLine}</Text> : null}
                     {item.isFree !== undefined && (
                       <View style={[s.freeBadge, item.isFree ? {} : s.payBadge]}>

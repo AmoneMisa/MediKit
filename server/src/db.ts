@@ -219,6 +219,30 @@ export async function initDb(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_appointments_user   ON appointments(user_id);
     CREATE INDEX IF NOT EXISTS idx_appointments_doctor ON appointments(user_id, doctor_id);
 
+    -- Community-contributed doctors catalog (read by everyone, writable by auth'd users).
+    CREATE TABLE IF NOT EXISTS doctors_catalog (
+      id             TEXT PRIMARY KEY,
+      name           TEXT NOT NULL,
+      speciality     TEXT NOT NULL,
+      phone          TEXT,
+      email          TEXT,
+      address        TEXT,
+      city           TEXT,
+      country        TEXT,
+      languages      JSONB,
+      is_free        BOOLEAN,
+      cost           TEXT,
+      whatsapp       TEXT,
+      telegram       TEXT,
+      viber          TEXT,
+      notes          TEXT,
+      contributed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      contributed_at TEXT NOT NULL,
+      search_blob    TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_cat_doc_blob ON doctors_catalog(search_blob);
+    CREATE INDEX IF NOT EXISTS idx_cat_doc_spec ON doctors_catalog(speciality);
+
     -- JWT revocation: rows expire when the token itself expires (30 d).
     CREATE TABLE IF NOT EXISTS token_blocklist (
       jti        TEXT PRIMARY KEY,

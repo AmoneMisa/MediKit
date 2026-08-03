@@ -1,17 +1,18 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, Image, Share,
+  StyleSheet, SafeAreaView, Alert, Image, Share, ActivityIndicator,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppStore } from '../store';
+import { searchDoctorsCatalog, contributeDoctorToCatalog } from '../api';
 import { Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
 import { useColors } from '../context/ThemeContext';
 import { useT } from '../i18n';
-import type { Doctor } from '../types';
+import type { Doctor, CatalogDoctor } from '../types';
 
 let launchImageLibrary: any;
 let launchCamera: any;
@@ -351,6 +352,14 @@ export function DoctorsListScreen() {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>{t('doc_title')}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('DoctorCatalog')}
+          style={{ backgroundColor: C.bgCard, borderRadius: Radius.xl, paddingHorizontal: Spacing.md, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderColor: C.border }}
+          activeOpacity={0.85}
+        >
+          <Icon name="earth" size={16} color={C.blue} />
+          <Text style={{ fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: C.blue }}>{t('doc_catalog_btn')}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('DoctorForm', {})}
           style={{ backgroundColor: C.blue, borderRadius: Radius.xl, paddingHorizontal: Spacing.md, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
@@ -700,6 +709,9 @@ export function DoctorFormScreen() {
               <Text style={s.deleteBtnText}>{t('doc_delete')}</Text>
             </TouchableOpacity>
           )}
+          {existing && (
+            <ContributeButton doctor={existing} />
+          )}
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -736,5 +748,211 @@ function FormField({
         autoCapitalize="none"
       />
     </View>
+  );
+}
+
+// ─── ContributeButton ──────────────────────────────────────────────────────────
+
+function ContributeButton({ doctor }: { doctor: Doctor }) {
+  const C = useColors();
+  const t = useT();
+  const [busy, setBusy]   = useState(false);
+  const [done, setDone]   = useState(false);
+
+  function handleContribute() {
+    Alert.alert(
+      t('doc_contribute'),
+      t('doc_contribute_confirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('doc_contribute'),
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await contributeDoctorToCatalog({
+                name: doctor.name, speciality: doctor.speciality,
+                phone: doctor.phone, email: doctor.email,
+                address: doctor.address, city: doctor.city, country: doctor.country,
+                languages: doctor.languages, isFree: doctor.isFree, cost: doctor.cost,
+                whatsapp: doctor.whatsapp, telegram: doctor.telegram, viber: doctor.viber,
+                notes: doctor.notes,
+              });
+              setDone(true);
+            } catch { Alert.alert(t('pf_try_again')); }
+            setBusy(false);
+          },
+        },
+      ],
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6, padding: Spacing.md }}
+      onPress={handleContribute}
+      disabled={busy || done}
+      activeOpacity={0.7}
+    >
+      {busy
+        ? <ActivityIndicator color={C.blue} size="small" />
+        : <Icon name={done ? 'check-circle' : 'earth-plus'} size={16} color={done ? C.success : C.blue} />}
+      <Text style={{ fontSize: Typography.size.body, color: done ? C.success : C.blue, fontWeight: Typography.weight.semibold }}>
+        {done ? t('doc_contributed') : t('doc_contribute')}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── DoctorCatalogScreen ───────────────────────────────────────────────────────
+
+export function DoctorCatalogScreen() {
+  const navigation = useNavigation<any>();
+  const C = useColors();
+  const t = useT();
+  const s = useMemo(() => makeStyles(C), [C]);
+
+  const myDoctors  = useAppStore(st => st.doctors);
+  const addDoctor  = useAppStore(st => st.addDoctor);
+
+  const [query,      setQuery]      = useState('');
+  const [filterSpec, setFilterSpec] = useState<string | null>(null);
+  const [results,    setResults]    = useState<CatalogDoctor[]>([]);
+  const [loading,    setLoading]    = useState(false);
+  const [searched,   setSearched]   = useState(false);
+  const [addedIds,   setAddedIds]   = useState<Set<string>>(new Set());
+
+  async function doSearch() {
+    setLoading(true);
+    setSearched(true);
+    try {
+      const res = await searchDoctorsCatalog(query, filterSpec ?? undefined);
+      setResults(res);
+    } catch { setResults([]); }
+    setLoading(false);
+  }
+
+  // Auto-search when speciality filter changes (if already searched once)
+  useEffect(() => {
+    if (searched) doSearch();
+  }, [filterSpec]);
+
+  function handleAdd(doc: CatalogDoctor) {
+    const now = new Date().toISOString();
+    addDoctor({
+      id: `doc-${Date.now()}`,
+      name: doc.name, speciality: doc.speciality,
+      phone: doc.phone, email: doc.email,
+      address: doc.address, city: doc.city, country: doc.country,
+      languages: doc.languages, isFree: doc.isFree, cost: doc.cost,
+      whatsapp: doc.whatsapp, telegram: doc.telegram, viber: doc.viber,
+      notes: doc.notes,
+      createdAt: now, updatedAt: now,
+    });
+    setAddedIds(prev => new Set([...prev, doc.id]));
+  }
+
+  const myNames = useMemo(() => new Set(myDoctors.map(d => d.name.toLowerCase())), [myDoctors]);
+
+  const specs = useMemo(() =>
+    [...new Set(results.map(d => d.speciality))].sort(),
+  [results]);
+
+  return (
+    <SafeAreaView style={s.root}>
+      {/* Search bar */}
+      <View style={[s.searchWrap, { marginTop: Spacing.md }]}>
+        <Icon name="earth" size={20} color={C.textTertiary} />
+        <TextInput
+          style={s.searchInput}
+          placeholder={t('doc_catalog_search_ph')}
+          placeholderTextColor={C.textTertiary}
+          value={query}
+          onChangeText={setQuery}
+          returnKeyType="search"
+          onSubmitEditing={doSearch}
+          autoFocus
+        />
+        {query ? <TouchableOpacity onPress={() => setQuery('')}><Icon name="close" size={18} color={C.textTertiary} /></TouchableOpacity> : null}
+        <TouchableOpacity onPress={doSearch} activeOpacity={0.8}>
+          <Icon name="magnify" size={22} color={C.blue} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Speciality filters (shown after first search) */}
+      {specs.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.lg, alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => setFilterSpec(null)} style={[s.chip, !filterSpec && s.chipActive]} activeOpacity={0.8}>
+            <Text style={[s.chipText, !filterSpec && s.chipTextA]}>{t('doc_filter_all')}</Text>
+          </TouchableOpacity>
+          {specs.map(sp => (
+            <TouchableOpacity key={sp} onPress={() => setFilterSpec(filterSpec === sp ? null : sp)} style={[s.chip, filterSpec === sp && s.chipActive]} activeOpacity={0.8}>
+              <Text style={[s.chipText, filterSpec === sp && s.chipTextA]}>{sp}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Content */}
+      {loading ? (
+        <View style={s.emptyWrap}><ActivityIndicator color={C.blue} size="large" /></View>
+      ) : !searched ? (
+        <View style={s.emptyWrap}>
+          <Icon name="earth" size={54} color={C.textTertiary} />
+          <Text style={s.emptyText}>{t('doc_catalog_title')}</Text>
+          <Text style={s.emptySub}>{t('doc_catalog_search_ph')}</Text>
+        </View>
+      ) : results.length === 0 ? (
+        <View style={s.emptyWrap}>
+          <Icon name="doctor" size={54} color={C.textTertiary} />
+          <Text style={s.emptyText}>{t('doc_catalog_empty')}</Text>
+          <Text style={s.emptySub}>{t('doc_catalog_empty_sub')}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={d => d.id}
+          contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: 40 }}
+          renderItem={({ item }) => {
+            const alreadyAdded = addedIds.has(item.id) || myNames.has(item.name.toLowerCase());
+            const contactLine = [item.city, item.country].filter(Boolean).join(', ');
+            return (
+              <View style={s.card}>
+                <View style={s.cardInner}>
+                  <View style={s.avatar}>
+                    <Text style={s.avatarText}>{item.name.trim().split(/\s+/).map((w: string) => w[0]?.toUpperCase() ?? '').join('').slice(0, 2)}</Text>
+                  </View>
+                  <View style={s.cardBody}>
+                    <Text style={s.cardName}>{item.name}</Text>
+                    <Text style={s.cardSpec}>{item.speciality}</Text>
+                    {contactLine ? <Text style={s.cardSub}>{contactLine}</Text> : null}
+                    {item.isFree !== undefined && (
+                      <View style={[s.freeBadge, item.isFree ? {} : s.payBadge]}>
+                        <Text style={[s.freeBadgeText, item.isFree ? {} : s.payBadgeText]}>
+                          {item.isFree ? t('doc_free') : (item.cost ? `${t('doc_paid')} · ${item.cost}` : t('doc_paid'))}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={s.cardActions}>
+                  <TouchableOpacity
+                    style={[s.cardAction, { flex: 1 }]}
+                    onPress={() => !alreadyAdded && handleAdd(item)}
+                    disabled={alreadyAdded}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name={alreadyAdded ? 'check' : 'plus-circle'} size={16} color={alreadyAdded ? C.success : C.blue} />
+                    <Text style={[s.cardActionText, { color: alreadyAdded ? C.success : C.blue }]}>
+                      {alreadyAdded ? t('doc_already_added') : t('doc_add_to_my_list')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
+    </SafeAreaView>
   );
 }

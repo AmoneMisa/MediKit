@@ -35,7 +35,7 @@ import { SyncMembersScreen }      from '../screens/SyncMembersScreen';
 import { ActivityHistoryScreen }  from '../screens/ActivityHistoryScreen';
 import { CreateEditKitScreen }    from '../screens/CreateEditKitScreen';
 import { PersonsScreen }          from '../screens/PersonsScreen';
-import { DoctorsListScreen, DoctorFormScreen } from '../screens/DoctorsScreen';
+import { DoctorsListScreen, DoctorFormScreen, DoctorCatalogScreen } from '../screens/DoctorsScreen';
 import { AppointmentsScreen, AnalysesArchiveScreen } from '../screens/AppointmentsScreen';
 import { ShoppingListScreen }     from '../screens/ShoppingListScreen';
 import { MedicineJournalScreen }  from '../screens/MedicineJournalScreen';
@@ -196,6 +196,7 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="Persons"        component={PersonsScreen}        options={{ title: t('contacts') }} />
       <ProfileStack.Screen name="Doctors"          component={DoctorsListScreen}      options={{ headerShown: false }} />
       <ProfileStack.Screen name="DoctorForm"       component={DoctorFormScreen}       options={{ title: t('doc_form_title') }} />
+      <ProfileStack.Screen name="DoctorCatalog"    component={DoctorCatalogScreen}    options={{ title: t('doc_catalog_title') }} />
       <ProfileStack.Screen name="Appointments"     component={AppointmentsScreen}     options={{ headerShown: false }} />
       <ProfileStack.Screen name="AnalysesArchive"  component={AnalysesArchiveScreen}  options={{ headerShown: false }} />
       <ProfileStack.Screen name="Expiry"           component={ExpiryScreen}           options={{ title: t('expiry_title') }} />

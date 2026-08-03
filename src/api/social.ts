@@ -1,7 +1,7 @@
 import { request, type ApiUser } from './client';
 import type {
   MedicineKit, KitMember, KitActivityEvent, AppNotification, KitAccessRole, MedicinePrefill,
-  Medicine, Doctor, DoctorAppointment,
+  Medicine, Doctor, DoctorAppointment, CatalogDoctor,
 } from '../types';
 
 export type { ApiUser };
@@ -222,6 +222,17 @@ export function patchDoctor(doctorId: string, changes: Partial<Doctor>) {
 
 export function deleteDoctor(doctorId: string) {
   return request<{ ok: true }>(`/doctors/${doctorId}`, { method: 'DELETE' });
+}
+
+export function searchDoctorsCatalog(query: string, speciality?: string, city?: string) {
+  const params = new URLSearchParams({ q: query });
+  if (speciality) params.set('speciality', speciality);
+  if (city) params.set('city', city);
+  return request<{ doctors: CatalogDoctor[] }>(`/doctors/catalog?${params.toString()}`).then(r => r.doctors);
+}
+
+export function contributeDoctorToCatalog(doctor: Omit<CatalogDoctor, 'id' | 'contributedAt'>) {
+  return request<{ ok: boolean }>('/doctors/catalog', { method: 'POST', body: doctor });
 }
 
 // ─── Appointments ─────────────────────────────────────────────────────────────

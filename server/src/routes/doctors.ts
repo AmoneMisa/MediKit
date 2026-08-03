@@ -6,8 +6,84 @@ import { pushToUser } from '../realtime.js';
 
 export const doctorsRouter = Router();
 
-// All routes require auth — doctors are private to the authenticated user.
+// ─── Community catalog ─────────────────────────────────────────────────────────
+
+interface CatalogRow {
+  id: string; name: string; speciality: string;
+  phone: string | null; email: string | null;
+  address: string | null; city: string | null; country: string | null;
+  languages: string[] | null;
+  is_free: boolean | null; cost: string | null;
+  whatsapp: string | null; telegram: string | null; viber: string | null;
+  notes: string | null; contributed_at: string;
+}
+
+function toCatalog(r: CatalogRow) {
+  return {
+    id: r.id, name: r.name, speciality: r.speciality,
+    phone:     r.phone     ?? undefined,
+    email:     r.email     ?? undefined,
+    address:   r.address   ?? undefined,
+    city:      r.city      ?? undefined,
+    country:   r.country   ?? undefined,
+    languages: r.languages ?? undefined,
+    isFree:    r.is_free   ?? undefined,
+    cost:      r.cost      ?? undefined,
+    whatsapp:  r.whatsapp  ?? undefined,
+    telegram:  r.telegram  ?? undefined,
+    viber:     r.viber     ?? undefined,
+    notes:     r.notes     ?? undefined,
+    contributedAt: r.contributed_at,
+  };
+}
+
+/** GET /api/doctors/catalog — search shared catalog, no auth required */
+doctorsRouter.get('/catalog', async (_req: AuthedRequest, res, next) => {
+  try {
+    const { q: qParam = '', speciality, city } = _req.query as Record<string, string>;
+    const term = `%${qParam.toLowerCase()}%`;
+    const params: unknown[] = [term];
+    let sql = 'SELECT * FROM doctors_catalog WHERE LOWER(search_blob) LIKE $1';
+    if (speciality) { params.push(speciality); sql += ` AND speciality = $${params.length}`; }
+    if (city) { params.push(`%${city.toLowerCase()}%`); sql += ` AND LOWER(city) LIKE $${params.length}`; }
+    sql += ' ORDER BY name ASC LIMIT 50';
+    const rows = await q<CatalogRow>(sql, params);
+    res.json({ doctors: rows.map(toCatalog) });
+  } catch (e) { next(e); }
+});
+
+// All other routes require auth — doctors are private to the authenticated user.
 doctorsRouter.use(requireAuth);
+
+/** POST /api/doctors/catalog — contribute a doctor to the shared catalog */
+doctorsRouter.post('/catalog', async (req: AuthedRequest, res, next) => {
+  try {
+    const b = req.body;
+    if (!b.name)      throw new HttpError(400, 'name is required');
+    if (!b.speciality) throw new HttpError(400, 'speciality is required');
+    const now = new Date().toISOString();
+    const catalogId = `dc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const blob = [b.name, b.speciality, b.city, b.country, b.address].filter(Boolean).join(' ').toLowerCase();
+    await exec(`
+      INSERT INTO doctors_catalog (
+        id, name, speciality, phone, email, address, city, country,
+        languages, is_free, cost, whatsapp, telegram, viber, notes,
+        contributed_by, contributed_at, search_blob
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+      ON CONFLICT (id) DO NOTHING
+    `, [
+      catalogId, b.name, b.speciality,
+      b.phone ?? null, b.email ?? null,
+      b.address ?? null, b.city ?? null, b.country ?? null,
+      b.languages ? JSON.stringify(b.languages) : null,
+      b.isFree ?? null, b.cost ?? null,
+      b.whatsapp ?? null, b.telegram ?? null, b.viber ?? null,
+      b.notes ?? null,
+      req.user!.id, now, blob,
+    ]);
+    res.status(201).json({ ok: true });
+  } catch (e) { next(e); }
+});
 
 // ─── Row ↔ Doctor mapping ──────────────────────────────────────────────────────
 

@@ -169,6 +169,25 @@ export interface Doctor {
   updatedAt: string;
 }
 
+export interface CatalogDoctor {
+  id: string;
+  name: string;
+  speciality: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  languages?: string[];
+  isFree?: boolean;
+  cost?: string;
+  whatsapp?: string;
+  telegram?: string;
+  viber?: string;
+  notes?: string;
+  contributedAt: string;
+}
+
 // ─── Shopping list ────────────────────────────────────────────────────────────
 
 export interface ShoppingItem {

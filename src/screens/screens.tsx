@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, TextInput, Switch, Alert, Share, Clipboard, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -73,7 +74,7 @@ const ns = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, marginBottom: Spacing.md },
   title: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.extrabold, color: Colors.textPrimary },
   markAll: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.blue },
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
+  list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
   card: { backgroundColor: Colors.bgCard, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, ...Shadow.card },
   cardRead: { opacity: 0.6 },
   dot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
@@ -151,7 +152,7 @@ const es = StyleSheet.create({
   title: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.extrabold, color: Colors.textPrimary, marginBottom: Spacing.md },
   alertBanner: { backgroundColor: Colors.dangerLight, borderWidth: 1.5, borderColor: Colors.dangerBorder, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.sm },
   alertText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: Colors.dangerDark },
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
+  list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
   row: { backgroundColor: Colors.bgCard, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.sm, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, ...Shadow.card },
   iconWrap: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
@@ -252,6 +253,7 @@ export function ManualEntryScreen() {
 
   return (
     <SafeAreaView style={me.root}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={me.scroll} keyboardShouldPersistTaps="handled">
         <Text style={me.sec}>{t('pf_section_main')}</Text>
         <View style={me.card}>
@@ -300,6 +302,7 @@ export function ManualEntryScreen() {
           </View>
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -330,7 +333,7 @@ const mef = StyleSheet.create({
 });
 const me = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
+  scroll: { padding: Spacing.lg, paddingBottom: 100 },
   sec: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm, marginTop: Spacing.md },
   card: { backgroundColor: Colors.bgCard, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.xs, ...Shadow.card },
   formPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.bgCard },
@@ -355,7 +358,7 @@ const ROLE_LABEL_KEYS: Record<KitAccessRole, string> = {
 function makeShareKitStyles(C: ColorPalette) {
   return StyleSheet.create({
     root:   { flex: 1, backgroundColor: C.bgPage },
-    scroll: { padding: Spacing.lg, paddingBottom: 40 },
+    scroll: { padding: Spacing.lg, paddingBottom: 100 },
 
     qrBlock: {
       backgroundColor: C.blueLight, borderRadius: Radius.xl,
@@ -472,6 +475,7 @@ export function ShareKitScreen() {
 
   return (
     <SafeAreaView style={sk.root}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={sk.scroll} keyboardShouldPersistTaps="handled">
 
         {/* ── QR block ── */}
@@ -575,6 +579,7 @@ export function ShareKitScreen() {
         </View>
 
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -659,6 +664,7 @@ export function CreateEditKitScreen() {
 
   return (
     <SafeAreaView style={ck.root}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={ck.scroll} keyboardShouldPersistTaps="handled">
         <View style={[ck.preview, { backgroundColor: colorTag + '22', borderColor: colorTag + '66' }]}>
           <Icon name={icon} size={52} color={colorTag} style={{ marginBottom: Spacing.sm }} />
@@ -705,12 +711,13 @@ export function CreateEditKitScreen() {
           </TouchableOpacity>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 const ck = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
+  scroll: { padding: Spacing.lg, paddingBottom: 100 },
   preview: { alignItems: 'center', padding: Spacing.xl, borderRadius: Radius.xl, borderWidth: 1.5, marginBottom: Spacing.lg },
   previewName: { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: Colors.textPrimary },
   sec: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.xs, marginTop: Spacing.sm },
@@ -732,7 +739,7 @@ export function InteractionScreen() {
   if (!medicine) return <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}><Text style={{ padding: 20 }}>Не найдено</Text></SafeAreaView>;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bgPage }}>
-      <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 100 }}>
         <View style={{ backgroundColor: Colors.dangerLight, borderRadius: Radius.xl, padding: Spacing.lg, flexDirection: 'row', alignItems: 'center', gap: Spacing.lg, marginBottom: Spacing.lg }}>
           <Icon name="flask" size={44} color={Colors.dangerDark} />
           <View style={{ flex: 1 }}>
@@ -771,7 +778,7 @@ export function InteractionScreen() {
 function makeProfileStyles(C: ColorPalette) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: C.bgPage },
-    scroll:  { padding: Spacing.lg, paddingBottom: 40 },
+    scroll:  { padding: Spacing.lg, paddingBottom: 100 },
     label:   {
       fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
       color: C.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5,
@@ -897,7 +904,8 @@ export function ProfileScreen() {
   if (editing) {
     return (
       <SafeAreaView style={[ps.root]}>
-        <ScrollView contentContainerStyle={ps.scroll}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={ps.scroll} keyboardShouldPersistTaps="handled">
           <Text style={ps.label}>{t('pf_first_name')}</Text>
           <TextInput style={ps.input} placeholder={t('pf_first_name')} placeholderTextColor={C.textTertiary} value={name} onChangeText={setName} />
           <Text style={ps.label}>{t('pf_last_name')}</Text>
@@ -913,6 +921,7 @@ export function ProfileScreen() {
             <Text style={{ fontSize: Typography.size.base, color: C.textSecondary }}>{t('cancel')}</Text>
           </TouchableOpacity>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -1076,7 +1085,7 @@ export function SettingsScreen() {
 
   return (
     <SafeAreaView style={stg.root}>
-      <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 100 }}>
 
         {/* ── Theme ── */}
         <Text style={stg.sec}>{t('theme')}</Text>

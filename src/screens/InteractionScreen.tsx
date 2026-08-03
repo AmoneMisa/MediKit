@@ -13,7 +13,7 @@ import { useT } from '../i18n';
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
     root:   { flex: 1, backgroundColor: C.bgPage },
-    scroll: { padding: Spacing.lg, paddingBottom: 40 },
+    scroll: { padding: Spacing.lg, paddingBottom: 100 },
 
     hero: {
       flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,

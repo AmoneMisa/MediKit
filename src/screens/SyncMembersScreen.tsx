@@ -16,7 +16,7 @@ import type { KitAccessRole, KitMember } from '../types';
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: C.bgPage },
-    list: { padding: Spacing.lg, paddingBottom: 40 },
+    list: { padding: Spacing.lg, paddingBottom: 100 },
 
     infoBanner: { backgroundColor: C.blueLight, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.md },
     infoText:   { fontSize: Typography.size.body, color: C.blueDark, fontWeight: '600' },

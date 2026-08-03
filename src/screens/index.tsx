@@ -119,7 +119,7 @@ function roleLabel(r: KitAccessRole, t: (k: any) => string) {
 
 const ss = StyleSheet.create({
   root:   { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
+  scroll: { padding: Spacing.lg, paddingBottom: 100 },
   qrBlock: {
     backgroundColor: Colors.blueLight, borderRadius: Radius.xl,
     padding: Spacing.xl, alignItems: 'center', marginBottom: Spacing.lg,
@@ -252,7 +252,7 @@ export function ProfileScreen() {
 
 const ps = StyleSheet.create({
   root:   { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
+  scroll: { padding: Spacing.lg, paddingBottom: 100 },
   hero: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,
     borderRadius: Radius.xl, overflow: 'hidden',
@@ -394,7 +394,7 @@ function SettingToggle({ icon, label, value, onToggle }: { icon: string; label: 
 
 const stl = StyleSheet.create({
   root:   { flex: 1, backgroundColor: Colors.bgPage },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
+  scroll: { padding: Spacing.lg, paddingBottom: 100 },
   groupTitle: {
     fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,
     color: Colors.textTertiary, textTransform: 'uppercase',

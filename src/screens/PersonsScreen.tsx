@@ -43,7 +43,7 @@ function makeStyles(C: ColorPalette) {
     addBtn:    { backgroundColor: C.blue, borderRadius: Radius.xl, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: 4, ...Shadow.sm },
     addBtnText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.white },
 
-    list: { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
+    list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
     card: {
       backgroundColor: C.bgCard, borderRadius: Radius.xl,
       padding: Spacing.md, marginBottom: Spacing.md,

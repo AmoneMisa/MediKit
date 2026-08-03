@@ -28,7 +28,7 @@ const DAY_KEYS = ['day_sun', 'day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fr
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
     root:   { flex: 1, backgroundColor: C.bgPage },
-    scroll: { padding: Spacing.lg, paddingBottom: 40 },
+    scroll: { padding: Spacing.lg, paddingBottom: 100 },
 
     sec: {
       fontSize: Typography.size.xs, fontWeight: Typography.weight.bold,

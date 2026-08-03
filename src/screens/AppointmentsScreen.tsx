@@ -88,7 +88,7 @@ function makeStyles(C: ColorPalette) {
     sheet:      { backgroundColor: C.bgCard, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, maxHeight: '92%' },
     sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginTop: Spacing.sm },
     sheetTitle: { fontSize: Typography.size.xl, fontWeight: Typography.weight.extrabold, color: C.textPrimary, padding: Spacing.lg, paddingBottom: Spacing.sm },
-    sheetScroll: { padding: Spacing.lg, paddingTop: 0, paddingBottom: 40 },
+    sheetScroll: { padding: Spacing.lg, paddingTop: 0, paddingBottom: 100 },
 
     sec:  { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: Spacing.md, marginBottom: Spacing.xs },
     input: {
@@ -794,7 +794,7 @@ export function AnalysesArchiveScreen() {
         <FlatList
           data={allAnalyses}
           keyExtractor={a => a.id}
-          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 100 }}
           renderItem={({ item }) => (
             <View style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: Spacing.md }]}>
               <Icon name="file-document" size={28} color={C.blue} />

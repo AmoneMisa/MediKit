@@ -529,7 +529,7 @@ export function DoctorsListScreen() {
         <FlatList
           data={filtered}
           keyExtractor={d => d.id}
-          contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: 100 }}
           renderItem={({ item }) => (
             <DoctorCard
               doctor={item}
@@ -1045,7 +1045,7 @@ export function DoctorCatalogScreen() {
         <FlatList
           data={results}
           keyExtractor={d => d.id}
-          contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: 100 }}
           renderItem={({ item }) => {
             const alreadyAdded = addedIds.has(item.id) || myNames.has(item.name.toLowerCase());
             const contactLine = [item.city, item.country].filter(Boolean).join(', ');

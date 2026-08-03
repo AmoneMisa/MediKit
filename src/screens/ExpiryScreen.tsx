@@ -30,7 +30,7 @@ function makeStyles(C: ColorPalette) {
       borderColor: C.dangerBorder, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.sm,
     },
     alertText: { fontSize: Typography.size.body, fontWeight: Typography.weight.bold, color: C.dangerDark },
-    list:  { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
+    list:  { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
     row:   {
       backgroundColor: C.bgCard, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.sm,
       flexDirection: 'row', alignItems: 'center', gap: Spacing.md, ...Shadow.card,

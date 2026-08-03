@@ -33,7 +33,7 @@ function makeStyles(C: ColorPalette) {
     },
     searchIcon: { color: C.textTertiary },
     input:      { flex: 1, fontSize: Typography.size.md, color: C.textPrimary, textAlignVertical: 'center' },
-    list:       { paddingHorizontal: Spacing.lg, paddingBottom: 40 },
+    list:       { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
     item: {
       backgroundColor: C.bgCard, borderRadius: Radius.xl,
       padding: Spacing.md, marginBottom: Spacing.sm,

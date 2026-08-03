@@ -22,6 +22,7 @@ import { appointmentsRouter } from './routes/appointments.js';
 import { startScrapeScheduler } from './scrapeScheduler.js';
 
 const app = express();
+app.set('trust proxy', 1); // running behind nginx/reverse proxy
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));

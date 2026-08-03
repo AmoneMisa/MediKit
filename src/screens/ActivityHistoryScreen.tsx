@@ -31,7 +31,7 @@ const EVENT_CONFIG: Record<KitActivityEvent['type'], { icon: string; label: Labe
 function makeStyles(C: ColorPalette) {
   return StyleSheet.create({
     root:   { flex: 1, backgroundColor: C.bgPage },
-    list:   { padding: Spacing.lg, paddingBottom: 40 },
+    list:   { padding: Spacing.lg, paddingBottom: 100 },
     row:    { flexDirection: 'row', marginBottom: Spacing.md },
     timelineLeft: { alignItems: 'center', marginRight: Spacing.md, width: 40 },
     emojiCircle: {

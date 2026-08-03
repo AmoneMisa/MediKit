@@ -8,7 +8,25 @@
  */
 import pg from 'pg';
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+// Multiple mirrors tried in order — first reachable one wins.
+const OVERPASS_MIRRORS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+];
+
+let OVERPASS_URL = OVERPASS_MIRRORS[0];
+
+async function pickMirror(): Promise<void> {
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const resp = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(8_000) });
+      if (resp.ok || resp.status < 500) { OVERPASS_URL = url; return; }
+    } catch { /* try next */ }
+  }
+  console.warn('[scraper] No Overpass mirror reachable — OSM data will be skipped.');
+}
 
 // ─── OSM speciality → our display name ───────────────────────────────────────
 
@@ -426,12 +444,17 @@ export interface ScrapeResult { inserted: number; skipped: number; }
 export async function runScrape(pool: pg.Pool): Promise<ScrapeResult> {
   console.log('[scraper] Starting — manual entries + OSM');
 
+  // 0. Pick a reachable Overpass mirror
+  await pickMirror();
+  console.log(`[scraper] Using Overpass mirror: ${OVERPASS_URL}`);
+
   // 1. Manual entries
+  let manualInserted = 0;
   for (const entry of MANUAL_ENTRIES) {
-    try { await upsertManual(pool, entry); }
+    try { await upsertManual(pool, entry); manualInserted++; }
     catch (e) { console.error(`  [scraper] ✗ ${entry.name}:`, e); }
   }
-  console.log(`[scraper] Manual entries: ${MANUAL_ENTRIES.length} seeded`);
+  console.log(`[scraper] Manual entries: ${manualInserted} seeded`);
 
   // 2. OSM per city
   let inserted = 0, skipped = 0;
@@ -455,8 +478,8 @@ export async function runScrape(pool: pg.Pool): Promise<ScrapeResult> {
     }
   }
 
-  console.log(`[scraper] Done. OSM inserted: ${inserted}, skipped: ${skipped}`);
-  return { inserted, skipped };
+  console.log(`[scraper] Done. Manual: ${manualInserted}, OSM inserted: ${inserted}, skipped: ${skipped}`);
+  return { inserted: manualInserted + inserted, skipped };
 }
 
 // ─── CLI entry-point ──────────────────────────────────────────────────────────

@@ -743,6 +743,7 @@ export function AnalysesArchiveScreen() {
   const navigation = useNavigation<any>();
   const C          = useColors();
   const s          = useMemo(() => makeStyles(C), [C]);
+  const t          = useT();
 
   const appointments = useAppStore(st => st.appointments);
   const doctors      = useAppStore(st => st.doctors);
@@ -779,15 +780,15 @@ export function AnalysesArchiveScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
           <Icon name="arrow-left" size={24} color={C.textPrimary} />
         </TouchableOpacity>
-        <Text style={s.title}>Analyses Archive</Text>
+        <Text style={s.title}>{t('pf_analyses_archive')}</Text>
       </View>
-      <Text style={s.subtitle}>{allAnalyses.length} documents across all appointments</Text>
+      <Text style={s.subtitle}>{t('pf_analyses_docs_count').replace('{n}', String(allAnalyses.length))}</Text>
 
       {allAnalyses.length === 0 ? (
         <View style={s.emptyWrap}>
           <Icon name="file-document-multiple" size={54} color={C.textTertiary} />
-          <Text style={s.emptyText}>No analyses yet</Text>
-          <Text style={s.emptySub}>Attach files when creating appointments</Text>
+          <Text style={s.emptyText}>{t('pf_analyses_empty')}</Text>
+          <Text style={s.emptySub}>{t('pf_analyses_empty_sub')}</Text>
         </View>
       ) : (
         <FlatList

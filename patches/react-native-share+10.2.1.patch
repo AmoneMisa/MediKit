@@ -1,0 +1,11 @@
+diff --git a/node_modules/react-native-share/android/src/main/AndroidManifest.xml b/node_modules/react-native-share/android/src/main/AndroidManifest.xml
+index dd0b5ce..0bdecf3 100644
+--- a/node_modules/react-native-share/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-share/android/src/main/AndroidManifest.xml
+@@ -1,5 +1,5 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-    package="cl.json">
++   >
+ 
+     <application>
+         <provider

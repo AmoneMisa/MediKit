@@ -1,0 +1,12 @@
+diff --git a/node_modules/@notifee/react-native/android/src/main/AndroidManifest.xml b/node_modules/@notifee/react-native/android/src/main/AndroidManifest.xml
+index 93e4281..db1c11b 100644
+--- a/node_modules/@notifee/react-native/android/src/main/AndroidManifest.xml
++++ b/node_modules/@notifee/react-native/android/src/main/AndroidManifest.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-  package="io.invertase.notifee">
++ >
+ 
+   <application>
+     <provider

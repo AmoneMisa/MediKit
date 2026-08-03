@@ -168,6 +168,12 @@ export async function startSync(): Promise<void> {
   connectRealtime();
 }
 
+/** Reset and re-run sync (e.g. after Google sign-in to pull server data). */
+export function triggerFullSync(): void {
+  started = false;
+  startSync().catch(() => {});
+}
+
 /** Tear down realtime + disable pushes (e.g. on sign-out). */
 export function stopSync(): void {
   setSyncEnabled(false);

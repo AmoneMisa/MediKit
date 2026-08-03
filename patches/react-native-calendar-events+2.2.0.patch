@@ -1,0 +1,23 @@
+diff --git a/node_modules/react-native-calendar-events/android/build.gradle b/node_modules/react-native-calendar-events/android/build.gradle
+index 6782479..763f560 100644
+--- a/node_modules/react-native-calendar-events/android/build.gradle
++++ b/node_modules/react-native-calendar-events/android/build.gradle
+@@ -5,6 +5,7 @@ def safeExtGet(prop, fallback) {
+ }
+ 
+ android {
++    namespace "com.calendarevents"
+     compileSdkVersion safeExtGet('compileSdkVersion', 28)
+     buildToolsVersion safeExtGet('buildToolsVersion', '28.0.3')
+ 
+diff --git a/node_modules/react-native-calendar-events/android/src/main/AndroidManifest.xml b/node_modules/react-native-calendar-events/android/src/main/AndroidManifest.xml
+index efcc1bf..2b54119 100644
+--- a/node_modules/react-native-calendar-events/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-calendar-events/android/src/main/AndroidManifest.xml
+@@ -1,5 +1,5 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-    package="com.calendarevents">
++   >
+ 
+     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+     <uses-permission android:name="android.permission.READ_CALENDAR" />

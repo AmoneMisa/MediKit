@@ -6,7 +6,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppStore, getMedicineStatus } from '../store';
-import { ensureAuth, createInvite, updateMe, signInWithGoogle, isGoogleConfigured, GoogleCancelled } from '../api';
+import { ensureAuth, createInvite, updateMe, signInWithGoogle, isGoogleConfigured, GoogleCancelled, triggerFullSync, stopSync, deleteAccount, signOutGoogle } from '../api';
 import { useAllMedicinesSortedByExpiry, useExpiryLabel } from '../hooks';
 import { Colors, Spacing, Typography, Radius, Shadow } from '../theme';
 import type { ColorPalette } from '../theme';
@@ -809,6 +809,48 @@ export function ProfileScreen() {
   const [nickname, setNickname] = useState(user.nickname ?? '');
   const [email,    setEmail]    = useState(user.email ?? '');
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  function handleLogout() {
+    Alert.alert(
+      t('pf_logout'),
+      t('pf_logout_confirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('pf_logout'),
+          style: 'destructive',
+          onPress: () => {
+            stopSync();
+            signOutGoogle().catch(() => {});
+            updateUser({ googleLinked: false });
+          },
+        },
+      ],
+    );
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      t('pf_delete_account'),
+      t('pf_delete_account_confirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('pf_delete_account'),
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteBusy(true);
+            try { await deleteAccount(); } catch { /* best-effort */ }
+            stopSync();
+            signOutGoogle().catch(() => {});
+            updateUser({ googleLinked: false });
+            setDeleteBusy(false);
+          },
+        },
+      ],
+    );
+  }
 
   async function handleGoogle() {
     setGoogleBusy(true);
@@ -819,6 +861,7 @@ export function ProfileScreen() {
         surname: apiUser.surname, email: apiUser.email,
         avatarInitials: apiUser.avatarInitials, googleLinked: true,
       });
+      triggerFullSync(); // re-pull server data so kits appear immediately
       Alert.alert(t('pf_google_linked'), t('pf_google_linked_msg'));
     } catch (e) {
       if (e instanceof GoogleCancelled) return; // user backed out — no error
@@ -934,6 +977,31 @@ export function ProfileScreen() {
             {i < arr.length - 1 && <View style={ps.divider} />}
           </View>
         ))}
+
+        {/* ── Account actions ── */}
+        <Text style={[ps.label, { marginTop: Spacing.xl }]}>{t('pf_account_section')}</Text>
+        <View style={{ backgroundColor: C.bgCard, borderRadius: Radius.xl, overflow: 'hidden', ...Shadow.card }}>
+          <TouchableOpacity
+            style={[ps.row, { borderRadius: 0 }]}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Icon name="logout" size={18} color={Colors.warning} style={{ width: 26, textAlign: 'center' }} />
+            <Text style={[ps.rowText, { color: Colors.warning }]}>{t('pf_logout')}</Text>
+          </TouchableOpacity>
+          <View style={ps.divider} />
+          <TouchableOpacity
+            style={[ps.row, { borderRadius: 0 }]}
+            onPress={handleDeleteAccount}
+            disabled={deleteBusy}
+            activeOpacity={0.8}
+          >
+            {deleteBusy
+              ? <ActivityIndicator color={Colors.danger} style={{ width: 26 }} />
+              : <Icon name="delete-forever" size={18} color={Colors.danger} style={{ width: 26, textAlign: 'center' }} />}
+            <Text style={[ps.rowText, { color: Colors.danger }]}>{t('pf_delete_account')}</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

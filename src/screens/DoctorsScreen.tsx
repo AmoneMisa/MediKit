@@ -57,7 +57,7 @@ function makeStyles(C: ColorPalette) {
     searchInput: { flex: 1, fontSize: Typography.size.md, color: C.textPrimary, height: 44 },
 
     // Filter pills
-    filterRow: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
+    filterRow: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm, flexGrow: 0 },
 
     // Doctor card
     card: {
@@ -147,7 +147,7 @@ function makeStyles(C: ColorPalette) {
     },
     photoBtnText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: C.blue },
 
-    emptyWrap: { alignItems: 'center', paddingVertical: 60 },
+    emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
     emptyText: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: C.textPrimary, marginTop: Spacing.md },
     emptySub:  { fontSize: Typography.size.body, color: C.textSecondary, marginTop: Spacing.xs, textAlign: 'center', paddingHorizontal: Spacing.xl },
 
@@ -375,7 +375,7 @@ export function DoctorsListScreen() {
       </View>
 
       {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.lg }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.lg, alignItems: 'center' }}>
         {(['all', 'free', 'paid'] as const).map(f => (
           <TouchableOpacity
             key={f}

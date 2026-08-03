@@ -18,6 +18,12 @@ export async function logout(): Promise<void> {
   clearToken();
 }
 
+/** Permanently delete the account and all its data on the server. */
+export async function deleteAccount(): Promise<void> {
+  await request('/auth/me', { method: 'DELETE', auth: true });
+  clearToken();
+}
+
 export function getAccountNickname(): string | null {
   return apiStorage.getString(KEY_NICK) ?? null;
 }

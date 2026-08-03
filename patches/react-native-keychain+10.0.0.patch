@@ -1,0 +1,12 @@
+diff --git a/node_modules/react-native-keychain/android/src/main/AndroidManifest.xml b/node_modules/react-native-keychain/android/src/main/AndroidManifest.xml
+index 5e9cd37..4f928f5 100644
+--- a/node_modules/react-native-keychain/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-keychain/android/src/main/AndroidManifest.xml
+@@ -1,6 +1,6 @@
+ <manifest
+   xmlns:android="http://schemas.android.com/apk/res/android"
+-  package="com.oblador.keychain"
++ 
+   xmlns:tools="http://schemas.android.com/tools"
+   >
+ 

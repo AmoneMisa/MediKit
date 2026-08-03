@@ -1,0 +1,19 @@
+diff --git a/node_modules/react-native-linear-gradient/android/build.gradle b/node_modules/react-native-linear-gradient/android/build.gradle
+index e3aacde..2498eba 100644
+--- a/node_modules/react-native-linear-gradient/android/build.gradle
++++ b/node_modules/react-native-linear-gradient/android/build.gradle
+@@ -20,6 +20,7 @@ buildscript {
+ apply plugin: 'com.android.library'
+ 
+ android {
++    namespace "com.BV.LinearGradient"
+     compileSdkVersion safeExtGet('compileSdkVersion', 31).toInteger()
+     defaultConfig {
+         minSdkVersion safeExtGet('minSdkVersion', 21)
+diff --git a/node_modules/react-native-linear-gradient/android/src/main/AndroidManifest.xml b/node_modules/react-native-linear-gradient/android/src/main/AndroidManifest.xml
+index a7d57a6..cc947c5 100644
+--- a/node_modules/react-native-linear-gradient/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-linear-gradient/android/src/main/AndroidManifest.xml
+@@ -1 +1 @@
+-<manifest package="com.BV.LinearGradient" />
++<manifest />

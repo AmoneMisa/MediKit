@@ -73,6 +73,12 @@ authRouter.get('/me', requireAuth, (req: AuthedRequest, res) => {
   res.json({ user: publicUser(req.user!) });
 });
 
+/** Permanently delete the account and all its data (kits, medicines, doctors, appointments…). */
+authRouter.delete('/me', requireAuth, ah(async (req: AuthedRequest, res) => {
+  await exec('DELETE FROM users WHERE id = $1', [req.user!.id]);
+  res.json({ ok: true });
+}));
+
 /** Revoke the current token so it can never be reused (logout / sign-out). */
 authRouter.post('/logout', requireAuth, ah(async (req: AuthedRequest, res) => {
   if (req.tokenJti && req.tokenExp) {

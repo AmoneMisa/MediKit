@@ -16,19 +16,22 @@ export default function App() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // 1. Derive the MMKV encryption key from the OS keychain and migrate
-    //    plaintext stores (one-time, on first launch after this version).
-    // 2. Only THEN rehydrate Zustand from the now-encrypted MMKV — the store
-    //    was created with skipHydration:true to prevent it from opening MMKV
-    //    before the key is available.
+    // Guarantee the app never stays stuck on the splash screen.
+    const fallback = setTimeout(() => setReady(true), 8000);
+
+    const finish = () => { clearTimeout(fallback); setReady(true); };
+
     bootstrapSecurity()
-      .then(() => useAppStore.persist.rehydrate())
-      .then(() => setReady(true))
-      .catch(() => {
-        // If keychain is unavailable (e.g. first boot before device PIN),
-        // rehydrate anyway so the app doesn't stay stuck on the splash.
-        useAppStore.persist.rehydrate().finally(() => setReady(true));
+      .then(async () => { await useAppStore.persist.rehydrate(); })
+      .then(finish)
+      .catch(async () => {
+        // Keychain unavailable (first boot before device PIN, or release vs
+        // debug key mismatch) — rehydrate unencrypted and continue.
+        try { await useAppStore.persist.rehydrate(); } catch {}
+        finish();
       });
+
+    return () => clearTimeout(fallback);
   }, []);
 
   useEffect(() => {

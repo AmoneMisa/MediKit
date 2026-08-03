@@ -20,8 +20,20 @@ export function getMMKVEncryptionKey(): string | undefined {
   return _key;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Keychain timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 async function getOrCreateKey(): Promise<string> {
-  const creds = await Keychain.getGenericPassword({ service: KEYCHAIN_SERVICE });
+  const creds = await withTimeout(
+    Keychain.getGenericPassword({ service: KEYCHAIN_SERVICE }),
+    5000,
+  );
   if (creds && creds.password) return creds.password;
 
   // Generate a cryptographically-random 256-bit key (hex-encoded).
@@ -29,11 +41,14 @@ async function getOrCreateKey(): Promise<string> {
   crypto.getRandomValues(bytes);
   const key = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 
-  await Keychain.setGenericPassword('medikit', key, {
-    service: KEYCHAIN_SERVICE,
-    // Key stays on this device and does not migrate to a new device/backup.
-    accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
+  await withTimeout(
+    Keychain.setGenericPassword('medikit', key, {
+      service: KEYCHAIN_SERVICE,
+      // Key stays on this device and does not migrate to a new device/backup.
+      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    }),
+    5000,
+  );
   return key;
 }
 

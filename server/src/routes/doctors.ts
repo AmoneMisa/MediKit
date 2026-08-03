@@ -41,11 +41,11 @@ function toCatalog(r: CatalogRow) {
 doctorsRouter.get('/catalog', async (_req: AuthedRequest, res, next) => {
   try {
     const { q: qParam = '', speciality, city } = _req.query as Record<string, string>;
-    const term = `%${qParam.toLowerCase()}%`;
+    const term = `%${qParam}%`;
     const params: unknown[] = [term];
-    let sql = 'SELECT * FROM doctors_catalog WHERE LOWER(search_blob) LIKE $1';
+    let sql = 'SELECT * FROM doctors_catalog WHERE search_blob ILIKE $1';
     if (speciality) { params.push(speciality); sql += ` AND speciality = $${params.length}`; }
-    if (city) { params.push(`%${city.toLowerCase()}%`); sql += ` AND LOWER(city) LIKE $${params.length}`; }
+    if (city) { params.push(`%${city}%`); sql += ` AND city ILIKE $${params.length}`; }
     sql += ' ORDER BY name ASC LIMIT 50';
     const rows = await q<CatalogRow>(sql, params);
     res.json({ doctors: rows.map(toCatalog) });
@@ -63,7 +63,7 @@ doctorsRouter.post('/catalog', async (req: AuthedRequest, res, next) => {
     if (!b.speciality) throw new HttpError(400, 'speciality is required');
     const now = new Date().toISOString();
     const catalogId = `dc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const blob = [b.name, b.speciality, b.city, b.country, b.address].filter(Boolean).join(' ').toLowerCase();
+    const blob = [b.name, b.speciality, b.city, b.country, b.address].filter(Boolean).join(' ');
     await exec(`
       INSERT INTO doctors_catalog (
         id, name, speciality, phone, email, address, city, country,

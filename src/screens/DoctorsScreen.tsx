@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, FlatList, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert, Image, Share, ActivityIndicator,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -24,11 +24,16 @@ try {
 
 // ─── Specialities ─────────────────────────────────────────────────────────────
 
-const SPECIALITIES = [
-  'Therapist', 'Cardiologist', 'Neurologist', 'Dermatologist',
-  'Endocrinologist', 'Gastroenterologist', 'Ophthalmologist',
-  'ENT', 'Orthopedist', 'Urologist', 'Gynecologist', 'Pediatrician',
-  'Psychiatrist', 'Dentist', 'Surgeon', 'Other',
+const ALL_SPECIALITIES = [
+  'Allergist', 'Anesthesiologist', 'Cardiologist', 'Dentist',
+  'Dermatologist', 'Dietitian', 'Emergency Medicine', 'ENT',
+  'Endocrinologist', 'Family Medicine', 'Gastroenterologist',
+  'Gynecologist', 'Hematologist', 'Hepatologist', 'Immunologist',
+  'Infectologist', 'Nephrologist', 'Neurologist', 'Oncologist',
+  'Ophthalmologist', 'Orthopedist', 'Pediatrician', 'Physiotherapist',
+  'Psychiatrist', 'Psychologist', 'Pulmonologist', 'Radiologist',
+  'Rheumatologist', 'Surgeon', 'Therapist', 'Urologist',
+  'Hospital', 'Clinic', 'Other',
 ];
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -160,6 +165,70 @@ function makeStyles(C: ColorPalette) {
     },
     selectionText: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: C.white },
   });
+}
+
+// ─── SpecialityPickerModal ─────────────────────────────────────────────────────
+
+function SpecialityPickerModal({ visible, value, onSelect, onClose, includeAll = false }: {
+  visible: boolean;
+  value: string;
+  onSelect: (v: string) => void;
+  onClose: () => void;
+  includeAll?: boolean;
+}) {
+  const C = useColors();
+  const t = useT();
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    const base = includeAll ? ['', ...ALL_SPECIALITIES] : ALL_SPECIALITIES;
+    return base.filter(s => s.toLowerCase().includes(q));
+  }, [search, includeAll]);
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} activeOpacity={1} onPress={onClose} />
+      <View style={{ backgroundColor: C.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '65%' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.sm, gap: Spacing.sm }}>
+          <Icon name="magnify" size={18} color={C.textTertiary} />
+          <TextInput
+            style={{ flex: 1, fontSize: Typography.size.md, color: C.textPrimary, height: 40 }}
+            placeholder={t('doc_spec_search_ph')}
+            placeholderTextColor={C.textTertiary}
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+          />
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Icon name="close" size={22} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ height: 1, backgroundColor: C.borderLight }} />
+        <FlatList
+          data={filtered}
+          keyExtractor={s => s || '__all__'}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => {
+            const label = item === '' ? t('doc_filter_all') : item;
+            const active = value === item;
+            return (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.borderLight }}
+                onPress={() => { onSelect(item); setSearch(''); onClose(); }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ flex: 1, fontSize: Typography.size.md, color: active ? C.blue : C.textPrimary, fontWeight: active ? Typography.weight.bold : Typography.weight.regular as any }}>
+                  {label}
+                </Text>
+                {active && <Icon name="check" size={18} color={C.blue} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  );
 }
 
 // ─── DoctorAvatar ─────────────────────────────────────────────────────────────
@@ -487,6 +556,7 @@ export function DoctorFormScreen() {
   const [photoUri,   setPhotoUri]   = useState(existing?.photoUri ?? '');
 
   const [langInput,  setLangInput]  = useState('');
+  const [specModalVisible, setSpecModalVisible] = useState(false);
 
   async function handlePhoto() {
     if (!launchImageLibrary) return;
@@ -582,18 +652,23 @@ export function DoctorFormScreen() {
 
           {/* Speciality */}
           <Text style={s.sec}>{t('doc_speciality')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.sm }}>
-            {SPECIALITIES.map(sp => (
-              <TouchableOpacity
-                key={sp}
-                onPress={() => setSpeciality(sp)}
-                style={[s.chip, speciality === sp && s.chipActive]}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.chipText, speciality === sp && s.chipTextA]}>{sp}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity
+            style={[s.formCard, { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, marginBottom: Spacing.sm }]}
+            onPress={() => setSpecModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Icon name="stethoscope" size={18} color={C.textSecondary} style={{ marginRight: Spacing.sm }} />
+            <Text style={{ flex: 1, fontSize: Typography.size.md, color: speciality ? C.textPrimary : C.textTertiary }}>
+              {speciality || t('doc_spec_select')}
+            </Text>
+            <Icon name="chevron-right" size={20} color={C.textTertiary} />
+          </TouchableOpacity>
+          <SpecialityPickerModal
+            visible={specModalVisible}
+            value={speciality}
+            onSelect={setSpeciality}
+            onClose={() => setSpecModalVisible(false)}
+          />
 
           {/* Contact */}
           <Text style={s.sec}>{t('doc_contact')}</Text>
@@ -820,7 +895,8 @@ export function DoctorCatalogScreen() {
   const [results,    setResults]    = useState<CatalogDoctor[]>([]);
   const [loading,    setLoading]    = useState(false);
   const [searched,   setSearched]   = useState(false);
-  const [addedIds,   setAddedIds]   = useState<Set<string>>(new Set());
+  const [addedIds,        setAddedIds]        = useState<Set<string>>(new Set());
+  const [specModalVisible, setSpecModalVisible] = useState(false);
 
   async function doSearch() {
     setLoading(true);
@@ -854,10 +930,6 @@ export function DoctorCatalogScreen() {
 
   const myNames = useMemo(() => new Set(myDoctors.map(d => d.name.toLowerCase())), [myDoctors]);
 
-  const specs = useMemo(() =>
-    [...new Set(results.map(d => d.speciality))].sort(),
-  [results]);
-
   return (
     <SafeAreaView style={s.root}>
       {/* Search bar */}
@@ -879,19 +951,32 @@ export function DoctorCatalogScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Speciality filters (shown after first search) */}
-      {specs.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.lg, alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => setFilterSpec(null)} style={[s.chip, !filterSpec && s.chipActive]} activeOpacity={0.8}>
-            <Text style={[s.chipText, !filterSpec && s.chipTextA]}>{t('doc_filter_all')}</Text>
+      {/* Speciality filter button */}
+      <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm, flexDirection: 'row', gap: Spacing.sm }}>
+        <TouchableOpacity
+          style={[s.chip, !!filterSpec && s.chipActive]}
+          onPress={() => setSpecModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Icon name="filter-variant" size={14} color={filterSpec ? '#fff' : C.textSecondary} />
+          <Text style={[s.chipText, !!filterSpec && s.chipTextA]}>
+            {filterSpec || t('doc_filter_all')}
+          </Text>
+        </TouchableOpacity>
+        {filterSpec && (
+          <TouchableOpacity style={s.chip} onPress={() => setFilterSpec(null)} activeOpacity={0.8}>
+            <Icon name="close" size={14} color={C.textSecondary} />
+            <Text style={s.chipText}>{t('doc_filter_all')}</Text>
           </TouchableOpacity>
-          {specs.map(sp => (
-            <TouchableOpacity key={sp} onPress={() => setFilterSpec(filterSpec === sp ? null : sp)} style={[s.chip, filterSpec === sp && s.chipActive]} activeOpacity={0.8}>
-              <Text style={[s.chipText, filterSpec === sp && s.chipTextA]}>{sp}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+        )}
+      </View>
+      <SpecialityPickerModal
+        visible={specModalVisible}
+        value={filterSpec ?? ''}
+        onSelect={sp => setFilterSpec(sp === '' ? null : sp)}
+        onClose={() => setSpecModalVisible(false)}
+        includeAll
+      />
 
       {/* Content */}
       {loading ? (

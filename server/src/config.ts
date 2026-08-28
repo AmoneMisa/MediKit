@@ -44,7 +44,12 @@ export const config = {
   enableGlobalMedicineSources: (process.env.ENABLE_GLOBAL_SOURCES ?? 'true') !== 'false',
 
   // Groq vision key for label-photo scanning (server-side only — never shipped to
-  // the client). Empty → /api/label-scan returns 503. Free tier: console.groq.com.
+  // the client). Empty → provider is skipped. Free tier: console.groq.com.
   groqApiKey: process.env.GROQ_API_KEY ?? '',
   groqVisionModel: process.env.GROQ_VISION_MODEL ?? 'qwen/qwen3.6-27b',
+
+  // Gemini vision key — fallback provider for label-photo scanning, tried if Groq
+  // is unconfigured or fails. Empty → provider is skipped.
+  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
+  geminiVisionModel: process.env.GEMINI_VISION_MODEL ?? 'gemini-3.6-flash',
 };

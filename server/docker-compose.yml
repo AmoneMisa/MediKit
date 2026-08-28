@@ -41,6 +41,11 @@ services:
       ENABLE_GLOBAL_SOURCES: ${ENABLE_GLOBAL_SOURCES:-true}
       # Google OAuth Web client ID(s) for verifying sign-in tokens (comma-separated).
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Label-scan vision providers (Groq primary, Gemini fallback). Empty = skipped.
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_VISION_MODEL: ${GROQ_VISION_MODEL:-qwen/qwen3.6-27b}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL:-gemini-3.6-flash}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

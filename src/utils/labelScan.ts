@@ -1,14 +1,6 @@
 import type { MedicinePrefill, MedicineForm, CompositionItem } from '../types';
 import { inferMedicineTags } from './medicineTags';
-
-// ─── Configuration ────────────────────────────────────────────────────────────
-// Free tier: 14,400 requests/day, ~3s per scan.
-// Get key at console.groq.com → API Keys → Create
-// Set GROQ_API_KEY in your environment or app config (e.g. react-native-config).
-// Get a free key at console.groq.com → API Keys → Create (14,400 req/day free).
-const GROQ_API_KEY = process.env.GROQ_API_KEY ?? '';
-const GROQ_URL     = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL   = 'qwen/qwen3.6-27b';
+import { request } from '../api/client';
 
 // ─── Module-level lazy load ───────────────────────────────────────────────────
 let launchCamera: any;
@@ -19,73 +11,16 @@ try {
   launchImageLibrary = ip.launchImageLibrary;
 } catch {}
 
-// ─── Groq vision call ─────────────────────────────────────────────────────────
-const SYSTEM_PROMPT =
-  'You are a pharmacist assistant. Extract medicine information from package photos and return ONLY valid JSON.';
-
-const USER_PROMPT =
-  'Look at this medicine package photo. Return ONLY a JSON object, no markdown, no explanation:\n' +
-  '{"name":"brand name without dosage numbers","activeIngredient":"WHO INN generic name in English","dosage":"e.g. 50 mg","form":"tablets or capsules or syrup or spray or drops or ointment or injection or powder or other","manufacturer":"company name","totalQuantity":null,"usageNotes":"one sentence what it treats","warnings":null,"storage":null,"country":null,"tags":["pick 1-3 from: pain,fever,sleep,allergy,cold,stomach,heart,nerves,muscles,antiseptic,antibiotic,vitamins,pressure,skin,eyes,diabetes"]}\n' +
-  'Rules: null for unknown fields. Keep brand name in original language. Translate activeIngredient to English INN. For tags pick only from the exact list provided, or use empty array if none fit.';
-
-async function callGroq(base64: string, mediaType: string): Promise<MedicinePrefill> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
-
-  try {
-    const body = JSON.stringify({
-      model:      GROQ_MODEL,
-      max_tokens: 4096,
-      temperature: 0.1,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: USER_PROMPT },
-            { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64}` } },
-          ],
-        },
-      ],
-    });
-
-    const resp = await fetch(GROQ_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-      },
-      body,
-      signal: controller.signal,
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      const msg = (err as any)?.error?.message ?? `HTTP_${resp.status}`;
-      throw new Error(msg);
-    }
-
-    const data = await resp.json();
-    const raw  = (data?.choices?.[0]?.message?.content ?? '').trim();
-
-    // Strip think blocks first, then extract the JSON object
-    const afterThink = raw.replace(/<think>[\s\S]*?<\/think>/gi, '')  // closed think tag
-                          .replace(/<think>[\s\S]*/gi, '')             // unclosed think tag
-                          .trim();
-    const jsonMatch = afterThink.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error(`JSON_PARSE: ${afterThink.slice(0, 80)}`);
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error(`JSON_PARSE: ${jsonMatch[0].slice(0, 80)}`);
-    }
-
-    return buildPrefill(parsed);
-  } finally {
-    clearTimeout(timer);
-  }
+// ─── Server-side vision scan ───────────────────────────────────────────────────
+// The Groq call itself (key, model, prompts) lives server-side in
+// server/src/routes/labelScan.ts so the API key never ships in the app bundle.
+async function scanViaServer(base64: string, mediaType: string): Promise<MedicinePrefill> {
+  const { result } = await request<{ result: unknown }>('/label-scan', {
+    method: 'POST',
+    body: { imageBase64: base64, mediaType },
+    timeoutMs: 35_000,
+  });
+  return buildPrefill(result);
 }
 
 function buildPrefill(p: any): MedicinePrefill {
@@ -174,7 +109,7 @@ export async function scanMedicineLabel(): Promise<LabelScanResult | null> {
         const asset = response.assets?.[0];
         if (!asset?.base64) { reject(new Error('NO_IMAGE_DATA')); return; }
         try {
-          const prefill = await callGroq(asset.base64, asset.type ?? 'image/jpeg');
+          const prefill = await scanViaServer(asset.base64, asset.type ?? 'image/jpeg');
           if (!prefill.name && !prefill.activeIngredient) { reject(new Error('NO_TEXT')); return; }
           if (asset.uri) prefill.photoUri = asset.uri;
           resolve({ prefill });
@@ -205,7 +140,7 @@ export async function scanMedicineLabelFromGallery(): Promise<LabelScanResult | 
         const asset = response.assets?.[0];
         if (!asset?.base64) { reject(new Error('NO_IMAGE_DATA')); return; }
         try {
-          const prefill = await callGroq(asset.base64, asset.type ?? 'image/jpeg');
+          const prefill = await scanViaServer(asset.base64, asset.type ?? 'image/jpeg');
           if (!prefill.name && !prefill.activeIngredient) { reject(new Error('NO_TEXT')); return; }
           if (asset.uri) prefill.photoUri = asset.uri;
           resolve({ prefill });

@@ -42,4 +42,9 @@ export const config = {
   // Toggle live open-source medicine lookups (openFDA / RxNav). Set to 'false' to
   // rely only on the local seeded catalog (e.g. offline / air-gapped deploys).
   enableGlobalMedicineSources: (process.env.ENABLE_GLOBAL_SOURCES ?? 'true') !== 'false',
+
+  // Groq vision key for label-photo scanning (server-side only — never shipped to
+  // the client). Empty → /api/label-scan returns 503. Free tier: console.groq.com.
+  groqApiKey: process.env.GROQ_API_KEY ?? '',
+  groqVisionModel: process.env.GROQ_VISION_MODEL ?? 'qwen/qwen3.6-27b',
 };

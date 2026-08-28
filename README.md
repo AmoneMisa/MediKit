@@ -119,7 +119,7 @@ npm start
 
 ```bash
 cd server
-cp .env.example .env        # fill in DATABASE_URL, JWT_SECRET, GOOGLE_CLIENT_IDS
+cp .env.example .env        # fill in DATABASE_URL, JWT_SECRET, GOOGLE_CLIENT_IDS, GROQ_API_KEY (label scanning)
 npm install
 
 # Option A — Docker (recommended)

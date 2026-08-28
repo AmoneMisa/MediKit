@@ -19,13 +19,14 @@ import { medicinesRouter } from './routes/medicines.js';
 import { kitMedicinesRouter } from './routes/kitMedicines.js';
 import { doctorsRouter } from './routes/doctors.js';
 import { appointmentsRouter } from './routes/appointments.js';
+import { labelScanRouter } from './routes/labelScan.js';
 import { startScrapeScheduler } from './scrapeScheduler.js';
 
 const app = express();
 app.set('trust proxy', 1); // running behind nginx/reverse proxy
 app.use(helmet());
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '4mb' })); // label-scan photos are base64 JSON bodies
 
 // Rate-limit auth endpoints to prevent brute-force attacks.
 const authLimiter = rateLimit({
@@ -50,6 +51,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/medicines', medicinesRouter);
 app.use('/api/doctors',       doctorsRouter);
 app.use('/api/appointments',  appointmentsRouter);
+app.use('/api/label-scan',    labelScanRouter);
 
 // Central error handler → JSON.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
